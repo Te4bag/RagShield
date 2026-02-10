@@ -1,0 +1,16 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.venv/
+venv/
+ENV/
+py-gpu/
+
+# Local databases
+chroma_db/
+
+# API Keys
+.env
