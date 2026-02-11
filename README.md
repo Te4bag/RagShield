@@ -138,16 +138,19 @@ This ensures that every claim shown to the user is anchored in verifiable source
 Customize chunking, retrieval, and verification parameters in `config.yaml`:
 
 ```yaml
-chunking:
-  chunk_size: 512
-  chunk_overlap: 50
+ingestion:
+  chunk_size: 600
+  chunk_overlap: 60
 
 retrieval:
-  top_k: 5
-  similarity_threshold: 0.7
+  top_k: 3
+
+models:
+  embeddings: "all-MiniLM-L6-v2"
+  generator: "llama3-8b-8192"
+  nli_model: "cross-encoder/nli-deberta-v3-small"
 
 verification:
-  nli_model: "microsoft/deberta-v3-base"
   entailment_threshold: 0.85
 ```
 
