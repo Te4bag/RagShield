@@ -1,12 +1,13 @@
 import chromadb
 from chromadb.utils import embedding_functions
 import os
-
+from .config_loader import cfg
 class RagShieldIndex:
     def __init__(self, db_path="./chroma_db"):
-        # Use a local embedding model (all-MiniLM-L6-v2 is fast and reliable)
+        # Pull model from YAML
+        model_name = cfg['models']['embeddings']
         self.embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name="all-MiniLM-L6-v2"
+            model_name=model_name
         )
         self.client = chromadb.PersistentClient(path=db_path)
         self.collection = self.client.get_or_create_collection(

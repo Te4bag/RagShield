@@ -1,11 +1,14 @@
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from .config_loader import cfg # Relative import
 
 def chunk_documents(documents):
-    # 500 characters is roughly 100-125 tokens. 
-    # Good for granular NLI verification later.
+    # Pull settings from YAML
+    size = cfg['ingestion']['chunk_size']
+    overlap = cfg['ingestion']['chunk_overlap']
+    
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=600,
-        chunk_overlap=60,
+        chunk_size=size,
+        chunk_overlap=overlap,
         separators=["\n\n", "\n", ".", " "]
     )
     
