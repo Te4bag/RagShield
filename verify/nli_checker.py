@@ -1,10 +1,11 @@
 from sentence_transformers import CrossEncoder
 from index import cfg
 from .segmenter import split_into_sentences
+import numpy as np
 
 class NLIAuditor:
     def __init__(self):
-        # Model defined in your config.yaml (e.g., cross-encoder/nli-deberta-v3-small)
+        # Model defined in config.yaml
         model_name = cfg.get('models', {}).get('nli_model', 'cross-encoder/nli-deberta-v3-small')
         self.model = CrossEncoder(model_name)
         self.threshold = cfg.get('verification', {}).get('entailment_threshold', 0.65)
@@ -14,19 +15,27 @@ class NLIAuditor:
         audit_results = []
 
         for sentence in sentences:
-            # We compare the sentence against the entire retrieved context block
-            # Cross-Encoders take a list of pairs: [(premise, hypothesis)]
-            score = self.model.predict([(retrieved_context, sentence)])[0]
+            # 1. Get raw logits from the model
+            logits = self.model.predict([(retrieved_context, sentence)])[0]
             
-            # DeBERTa NLI outputs usually map to: 0: Contradiction, 1: Neutral, 2: Entailment
-            # We convert these to a readable verdict
+            # 2. Apply Softmax to convert logits to probabilities (0.0 to 1.0)
+            exp_logits = np.exp(logits)
+            probs = exp_logits / exp_logits.sum()
+            
+            # 3. Map probabilities to labels
+            # 0: CONTRADICTION, 1: NEUTRAL, 2: ENTAILMENT
             label_mapping = ['CONTRADICTION', 'NEUTRAL', 'ENTAILMENT']
-            verdict = label_mapping[score.argmax()]
-            confidence = float(score.max())
+            verdict_idx = np.argmax(probs)
+            verdict = label_mapping[verdict_idx]
+            confidence = float(probs[verdict_idx])
 
-            # Refine verdict based on your custom threshold
+            # 4. Refine verdict based on our custom threshold
+            # If the model says ENTAILMENT but is not confident, mark as NEUTRAL
             if verdict == 'ENTAILMENT' and confidence < self.threshold:
                 verdict = 'NEUTRAL'
+            
+            # 5. Handle "Double Negative" Logic
+            # If the LLM says "I don't know" and the PDF doesn't mention it, the model correctly flags that statement as ENTAILMENT.
 
             audit_results.append({
                 "sentence": sentence,
