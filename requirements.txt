@@ -1,9 +1,11 @@
 pymupdf
+pypdf
 langchain-text-splitters
 
 chromadb
 sentence-transformers
 protobuf==3.20.3
+spacy
 
 groq
 streamlit
