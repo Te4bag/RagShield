@@ -10,7 +10,7 @@ models:
   # Local Embedding Model
   embeddings: "all-MiniLM-L6-v2"
   # Groq Generator Model
-  generator: "llama3-8b-8192"
+  generator: "llama-3.1-8b-instant"
   # Local NLI Model for verification
   nli_model: "cross-encoder/nli-deberta-v3-small"
 
