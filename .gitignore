@@ -14,3 +14,9 @@ chroma_db/
 
 # API Keys
 .env
+
+# Claude Code local config
+.claude/
+
+# Test cache
+.pytest_cache/
