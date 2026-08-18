@@ -2,8 +2,7 @@ from index import RagShieldIndex, cfg
 
 class Retriever:
     def __init__(self):
-        # Pull k from config. Default to 3 if missing.
-        self.top_k = cfg.get('retrieval', {}).get('top_k', 3)
+        self.top_k = cfg['retrieval']['top_k']
         self.index = RagShieldIndex()
 
     def get_context(self, query):

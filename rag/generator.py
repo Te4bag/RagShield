@@ -8,7 +8,7 @@ load_dotenv()
 class RagGenerator:
     def __init__(self):
         self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-        self.model = cfg.get('models', {}).get('generator', 'llama3-8b-8192')
+        self.model = cfg['models']['generator']
 
     def generate_answer(self, query, context):
         prompt = f"""

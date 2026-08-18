@@ -5,10 +5,10 @@ import numpy as np
 
 class NLIAuditor:
     def __init__(self):
-        # Model defined in config.yaml
-        model_name = cfg.get('models', {}).get('nli_model', 'cross-encoder/nli-deberta-v3-small')
-        self.model = CrossEncoder(model_name)
-        self.threshold = cfg.get('verification', {}).get('entailment_threshold', 0.65)
+        # Defaults live in index.config_loader.DEFAULTS, so cfg is always fully
+        # populated -- a missing key is a config bug and should raise here.
+        self.model = CrossEncoder(cfg['models']['nli_model'])
+        self.threshold = cfg['verification']['entailment_threshold']
 
     def audit_response(self, response_text, retrieved_context):
         sentences = split_into_sentences(response_text)
