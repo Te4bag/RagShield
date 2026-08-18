@@ -2,8 +2,9 @@ import streamlit as st
 import os
 import shutil
 from pathlib import Path
+from chromadb.errors import ChromaError, NotFoundError
 from ingest import DocumentLoader
-from index import chunk_documents, RagShieldIndex
+from index import COLLECTION_NAME, chunk_documents, RagShieldIndex
 from rag import Retriever, RagGenerator
 from verify import NLIAuditor
 
@@ -265,6 +266,24 @@ st.markdown('<p class="subtitle">AI-Powered Document Verification & Fact-Checkin
 UPLOAD_DIR = Path("demo/example_docs")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+def drop_collection(index):
+    """Delete the collection if it exists.
+
+    Returns True if the collection is gone afterwards. A missing collection is
+    the expected case on a first run or a repeated clear, so it is not an error.
+    Anything else (a locked database, a corrupt store) is reported rather than
+    swallowed -- otherwise a failed delete is indistinguishable from a
+    successful one and stale chunks silently survive a rebuild.
+    """
+    try:
+        index.client.delete_collection(COLLECTION_NAME)
+    except NotFoundError:
+        pass
+    except ChromaError as exc:
+        st.error(f"Could not delete the '{COLLECTION_NAME}' collection: {exc}")
+        return False
+    return True
+
 # 2. Simplified Sidebar
 with st.sidebar:
     st.markdown("##  Document Management")
@@ -292,13 +311,10 @@ with st.sidebar:
             shutil.rmtree(UPLOAD_DIR)
             UPLOAD_DIR.mkdir()
         index = RagShieldIndex()
-        try:
-            index.client.delete_collection("rag_shield_docs")
-        except:
-            pass
-        st.session_state.indexed = False
-        st.success(" System Cleared")
-        st.rerun()
+        if drop_collection(index):
+            st.session_state.indexed = False
+            st.success(" System Cleared")
+            st.rerun()
 
     st.markdown("---")
     
@@ -339,16 +355,18 @@ if st.button("🔍 Analyze Query", use_container_width=True, type="primary"):
                 with st.spinner(" Indexing documents..."):
                     loader = DocumentLoader(str(UPLOAD_DIR))
                     index = RagShieldIndex()
-                    try:
-                        index.client.delete_collection("rag_shield_docs")
-                    except:
-                        pass
-                    index.collection = index.client.get_or_create_collection(
-                        name="rag_shield_docs", embedding_function=index.embedding_fn
-                    )
-                    index.add_documents(chunk_documents(loader.load()))
-                    st.session_state.indexed = True
-            
+                    if drop_collection(index):
+                        index.collection = index.client.get_or_create_collection(
+                            name=COLLECTION_NAME, embedding_function=index.embedding_fn
+                        )
+                        index.add_documents(chunk_documents(loader.load()))
+                        st.session_state.indexed = True
+
+                # Indexing failed and drop_collection already reported why.
+                # Stop rather than querying a half-rebuilt collection.
+                if not st.session_state.indexed:
+                    st.stop()
+
             with st.spinner("🛡️ Analyzing and verifying response..."):
                 retriever = Retriever()
                 context, metadata = retriever.get_context(query)

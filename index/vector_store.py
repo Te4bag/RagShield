@@ -2,6 +2,12 @@ import chromadb
 from chromadb.utils import embedding_functions
 import os
 from .config_loader import cfg
+
+# The single ChromaDB collection backing the app. Anything that creates or
+# deletes it must reference this name rather than repeating the literal.
+COLLECTION_NAME = "rag_shield_docs"
+
+
 class RagShieldIndex:
     def __init__(self, db_path="./chroma_db"):
         # Pull model from YAML
@@ -11,7 +17,7 @@ class RagShieldIndex:
         )
         self.client = chromadb.PersistentClient(path=db_path)
         self.collection = self.client.get_or_create_collection(
-            name="rag_shield_docs",
+            name=COLLECTION_NAME,
             embedding_function=self.embedding_fn
         )
 
