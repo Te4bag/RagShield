@@ -17,3 +17,9 @@ models:
 verification:
   # Score threshold to consider something "Supported"
   entailment_threshold: 0.85
+  # How a sentence is scored against the retrieved chunks.
+  #   max_entailment - each chunk is its own premise; the chunk with the
+  #                    highest entailment probability decides the verdict
+  #   concatenate    - all chunks joined into one premise. Eval baseline
+  #                    only: it collapses most verdicts to NEUTRAL.
+  aggregation: "max_entailment"

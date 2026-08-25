@@ -17,7 +17,10 @@ DEFAULTS = {
         "generator": "llama-3.1-8b-instant",
         "nli_model": "cross-encoder/nli-deberta-v3-small",
     },
-    "verification": {"entailment_threshold": 0.85},
+    "verification": {
+        "entailment_threshold": 0.85,
+        "aggregation": "max_entailment",
+    },
 }
 
 
