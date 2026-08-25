@@ -266,6 +266,33 @@ st.markdown('<p class="subtitle">AI-Powered Document Verification & Fact-Checkin
 UPLOAD_DIR = Path("demo/example_docs")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+@st.cache_resource(show_spinner=False)
+def get_index():
+    """The one RagShieldIndex for this session.
+
+    Cached because constructing it loads the Sentence-Transformers embedding
+    model. Everything that touches the collection shares this instance, so a
+    rebuild that reassigns `.collection` is visible to every caller.
+    """
+    return RagShieldIndex()
+
+
+@st.cache_resource(show_spinner=False)
+def get_retriever():
+    return Retriever(index=get_index())
+
+
+@st.cache_resource(show_spinner=False)
+def get_generator():
+    return RagGenerator()
+
+
+@st.cache_resource(show_spinner=False)
+def get_auditor():
+    """Cached because this loads the NLI cross-encoder from disk."""
+    return NLIAuditor()
+
+
 def drop_collection(index):
     """Delete the collection if it exists.
 
@@ -310,7 +337,7 @@ with st.sidebar:
         if os.path.exists(UPLOAD_DIR):
             shutil.rmtree(UPLOAD_DIR)
             UPLOAD_DIR.mkdir()
-        index = RagShieldIndex()
+        index = get_index()
         if drop_collection(index):
             st.session_state.indexed = False
             st.success(" System Cleared")
@@ -354,7 +381,7 @@ if st.button("🔍 Analyze Query", use_container_width=True, type="primary"):
             if not st.session_state.indexed:
                 with st.spinner(" Indexing documents..."):
                     loader = DocumentLoader(str(UPLOAD_DIR))
-                    index = RagShieldIndex()
+                    index = get_index()
                     if drop_collection(index):
                         index.collection = index.client.get_or_create_collection(
                             name=COLLECTION_NAME, embedding_function=index.embedding_fn
@@ -368,16 +395,16 @@ if st.button("🔍 Analyze Query", use_container_width=True, type="primary"):
                     st.stop()
 
             with st.spinner("🛡️ Analyzing and verifying response..."):
-                retriever = Retriever()
+                retriever = get_retriever()
                 context, metadata = retriever.get_context(query)
                 
                 if not context:
                     st.error(" No relevant context found in the documents.")
                 else:
-                    generator = RagGenerator()
+                    generator = get_generator()
                     response = generator.generate_answer(query, context)
-                    
-                    auditor = NLIAuditor()
+
+                    auditor = get_auditor()
                     audit_results = auditor.audit_response(response, context)
                     
                     # Statistics Summary
