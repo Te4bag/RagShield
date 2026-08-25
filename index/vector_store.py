@@ -25,7 +25,18 @@ class RagShieldIndex:
         """Adds chunks to the vector store with metadata."""
         ids = [c["chunk_id"] for c in chunks]
         texts = [c["text"] for c in chunks]
-        metadatas = [{"doc_id": c["doc_id"]} for c in chunks]
+        # chunk_id and source_type ride along so a retrieved result can be
+        # attributed to the passage it came from, not merely to the document.
+        # Chroma returns ids separately, but carrying chunk_id in the metadata
+        # keeps attribution intact for callers that only read metadatas.
+        metadatas = [
+            {
+                "doc_id": c["doc_id"],
+                "chunk_id": c["chunk_id"],
+                "source_type": c["source_type"],
+            }
+            for c in chunks
+        ]
         
         self.collection.add(
             ids=ids,
