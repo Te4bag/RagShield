@@ -44,6 +44,7 @@ class NLIAuditor:
         self.threshold = cfg['verification']['entailment_threshold']
         self.contradiction_threshold = cfg['verification']['contradiction_threshold']
         self.aggregation = cfg['verification']['aggregation']
+        self.batch_size = cfg['verification']['batch_size']
         if self.aggregation not in AGGREGATIONS:
             raise ValueError(
                 f"Unknown verification.aggregation {self.aggregation!r}; "
@@ -80,10 +81,16 @@ class NLIAuditor:
                 })
         return premises
 
-    def _distributions(self, premise_texts, sentence):
-        """Softmaxed label distribution for `sentence` against each premise."""
-        pairs = [(text, sentence) for text in premise_texts]
-        logits = np.asarray(self.model.predict(pairs), dtype=float)
+    def _distributions(self, pairs):
+        """Softmaxed label distributions for every (premise, sentence) pair.
+
+        One forward pass for the whole response. CrossEncoder.predict sorts by
+        length internally and pads within a batch, so grouping more pairs
+        together does not change any individual pair's logits.
+        """
+        logits = np.asarray(
+            self.model.predict(pairs, batch_size=self.batch_size), dtype=float
+        )
         if logits.ndim == 1:
             logits = logits.reshape(1, -1)
         # Shifted by the row max for numerical stability.
@@ -109,18 +116,29 @@ class NLIAuditor:
                 for s in sentences
             ]
 
+        if not sentences:
+            return []
+
         premise_texts = [p["text"] for p in premises]
+
+        # Every (premise, sentence) pair in one batched pass, then reshaped back
+        # into per-sentence blocks. Sentence-major order, so block i belongs to
+        # sentence i. P3 multiplied the pair count by top_k, which is what makes
+        # batching worth doing here rather than one call per sentence.
+        pairs = [(text, sentence) for sentence in sentences for text in premise_texts]
+        probs = self._distributions(pairs).reshape(
+            len(sentences), len(premise_texts), -1
+        )
+
         audit_results = []
 
-        for sentence in sentences:
-            probs = self._distributions(premise_texts, sentence)
-
+        for sentence, block in zip(sentences, probs):
             # The premise that best supports the sentence wins, and its full
             # distribution decides the verdict. Selecting on "most confident
             # non-neutral" instead would actively favour CONTRADICTION and
             # manufacture false red flags.
-            best = int(np.argmax(probs[:, self.entailment_index]))
-            row = probs[best]
+            best = int(np.argmax(block[:, self.entailment_index]))
+            row = block[best]
 
             verdict_idx = int(np.argmax(row))
             verdict = self.label_order[verdict_idx]

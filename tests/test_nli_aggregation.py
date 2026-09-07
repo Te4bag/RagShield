@@ -52,11 +52,13 @@ def build(monkeypatch, script=None, default=STRONG_NEUTRAL,
             self.model.config = type("C", (), {})()
             self.model.config.id2label = dict(id2label or DEBERTA_LABELS)
             self.calls = []
+            self.batch_sizes = []
             captured["model"] = self
 
-        def predict(self, pairs):
+        def predict(self, pairs, batch_size=None):
             pairs = list(pairs)
             self.calls.append(pairs)
+            self.batch_sizes.append(batch_size)
             rows = [(script or {}).get((p, h), default) for p, h in pairs]
             return np.asarray(rows, dtype=float)
 
@@ -199,18 +201,46 @@ def test_neutral_is_never_promoted(monkeypatch):
 
 # --------------------------------------------------------------- premises
 
-def test_each_sentence_is_scored_against_every_chunk_separately(monkeypatch):
+def test_every_pair_is_scored_in_one_batched_call(monkeypatch):
+    """B5: the whole response is one forward pass, in sentence-major order."""
     sentences = ["first sentence", "second sentence"]
     chunks = [chunk("a_ch0"), chunk("b_ch1"), chunk("c_ch2")]
     auditor = build(monkeypatch, sentences=sentences)
 
     auditor.audit_response("ignored", chunks)
 
-    # One batched predict() per sentence, three pairs in each.
-    assert len(auditor.stub.calls) == len(sentences)
-    for call in auditor.stub.calls:
-        assert len(call) == len(chunks)
-        assert [p for p, _ in call] == [c["text"] for c in chunks]
+    (call,) = auditor.stub.calls
+    assert len(call) == len(sentences) * len(chunks)
+    assert call == [(c["text"], s) for s in sentences for c in chunks]
+    assert auditor.stub.batch_sizes == [nli.cfg["verification"]["batch_size"]]
+
+
+def test_reshape_keeps_each_sentence_with_its_own_scores(monkeypatch):
+    """The flattened batch must be split back per sentence, not transposed.
+
+    Sentence one is entailed only by chunk B, sentence two only by chunk A. If
+    the reshape were column-major the two would swap evidence.
+    """
+    s1, s2 = "first sentence", "second sentence"
+    chunks = [chunk("a_ch0"), chunk("b_ch1")]
+    auditor = build(monkeypatch, sentences=[s1, s2], script={
+        ("body of a_ch0", s1): STRONG_NEUTRAL,
+        ("body of b_ch1", s1): STRONG_ENTAIL,
+        ("body of a_ch0", s2): STRONG_ENTAIL,
+        ("body of b_ch1", s2): STRONG_NEUTRAL,
+    })
+
+    first, second = auditor.audit_response("ignored", chunks)
+
+    assert first["evidence"]["chunk_id"] == "b_ch1"
+    assert second["evidence"]["chunk_id"] == "a_ch0"
+
+
+def test_no_sentences_means_no_forward_pass(monkeypatch):
+    auditor = build(monkeypatch, sentences=[])
+
+    assert auditor.audit_response("ignored", [chunk("a_ch0")]) == []
+    assert auditor.stub.calls == []
 
 
 def test_concatenate_mode_collapses_to_a_single_premise(monkeypatch):

@@ -27,3 +27,6 @@ verification:
   #   concatenate    - all chunks joined into one premise. Eval baseline
   #                    only: it collapses most verdicts to NEUTRAL.
   aggregation: "max_entailment"
+  # Pairs per forward pass. One response is n_sentences x top_k pairs, all
+  # scored in a single batched call. Lower it if the GPU runs out of memory.
+  batch_size: 32
