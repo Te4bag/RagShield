@@ -1,4 +1,5 @@
 import streamlit as st
+import html
 import os
 import shutil
 from pathlib import Path
@@ -396,16 +397,22 @@ if st.button("🔍 Analyze Query", use_container_width=True, type="primary"):
 
             with st.spinner("🛡️ Analyzing and verifying response..."):
                 retriever = get_retriever()
-                context, metadata = retriever.get_context(query)
-                
-                if not context:
+                # Structured chunks, so each verdict can name the passage
+                # that produced it. The generator still wants one string;
+                # the auditor wants them separate -- scoring against the
+                # concatenation is what collapses verdicts to NEUTRAL.
+                chunks = retriever.retrieve(query)
+
+                if not chunks:
                     st.error(" No relevant context found in the documents.")
                 else:
+                    context = "\n\n".join(c["text"] for c in chunks)
+
                     generator = get_generator()
                     response = generator.generate_answer(query, context)
 
                     auditor = get_auditor()
-                    audit_results = auditor.audit_response(response, context)
+                    audit_results = auditor.audit_response(response, chunks)
                     
                     # Statistics Summary
                     st.markdown("---")
@@ -480,11 +487,21 @@ if st.button("🔍 Analyze Query", use_container_width=True, type="primary"):
                             css_class = "sentence-neutral"
                             icon = "⚠️"
                         
-                        # Create tooltip text
+                        # Tooltip names the deciding chunk. Escaped because
+                        # the sentence and chunk id both come from uploaded
+                        # documents and land in an HTML attribute / body.
+                        evidence = res.get('evidence') or {}
+                        source = evidence.get('chunk_id')
                         tooltip = f"{icon} {verdict} | Confidence: {confidence:.2f}"
-                        
+                        if source:
+                            tooltip += f" | {source}"
+
                         # Wrap sentence in span with tooltip
-                        response_html += f'<span class="{css_class}" data-tooltip="{tooltip}">{sentence}</span> '
+                        response_html += (
+                            f'<span class="{css_class}" '
+                            f'data-tooltip="{html.escape(tooltip, quote=True)}">'
+                            f'{html.escape(sentence)}</span> '
+                        )
                     
                     response_html += '</div>'
                     st.markdown(response_html, unsafe_allow_html=True)
@@ -510,11 +527,30 @@ if st.button("🔍 Analyze Query", use_container_width=True, type="primary"):
                             - Verdict: <span style="color: {color}; font-weight: 600;">{verdict}</span>
                             - Confidence: {confidence:.2f}
                             """, unsafe_allow_html=True)
+
+                            # The chunk this verdict was actually decided against.
+                            # Labelled by verdict: for NEUTRAL it is the closest
+                            # passage, NOT support, and calling it "supporting"
+                            # would assert exactly what NEUTRAL denies.
+                            evidence = res.get('evidence') or {}
+                            if evidence.get('text'):
+                                if verdict == 'ENTAILMENT':
+                                    lead = "Supported by"
+                                elif verdict == 'CONTRADICTION':
+                                    lead = "Contradicted by"
+                                else:
+                                    lead = "Closest passage (does not establish the claim)"
+                                # chunk_id is "{doc_id}_ch{i}", so it already
+                                # names the document -- no need to print both.
+                                where = evidence.get('chunk_id') or evidence.get('doc_id') or "unknown chunk"
+                                passage = " ".join(evidence['text'].split())
+                                st.markdown(f"- {lead} — `{where}`")
+                                st.caption(f"> {passage}")
                             st.markdown("---")
 
                     # Sources
                     with st.expander(" View Source Documents"):
-                        unique_sources = list(set([m['doc_id'] for m in metadata]))
+                        unique_sources = sorted({c['doc_id'] for c in chunks if c.get('doc_id')})
                         st.markdown("**Documents used for this analysis:**")
                         for source in unique_sources:
                             st.markdown(f"- `{source}`")
