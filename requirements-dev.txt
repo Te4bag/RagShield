@@ -1,0 +1,7 @@
+# Dev-only dependencies. The runtime deps live in requirements.txt.
+#   pip install -r requirements-dev.txt && pytest -q
+#
+# The suite is fast and offline by design: no model weights are downloaded and
+# nothing touches the network. See tests/test_nli_aggregation.py for how the
+# cross-encoder is stubbed.
+pytest==9.1.1
