@@ -19,6 +19,7 @@ DEFAULTS = {
     },
     "verification": {
         "entailment_threshold": 0.85,
+        "contradiction_threshold": 0.85,
         "aggregation": "max_entailment",
     },
 }

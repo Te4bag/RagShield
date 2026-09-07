@@ -42,6 +42,7 @@ class NLIAuditor:
         model_name = cfg['models']['nli_model']
         self.model = CrossEncoder(model_name)
         self.threshold = cfg['verification']['entailment_threshold']
+        self.contradiction_threshold = cfg['verification']['contradiction_threshold']
         self.aggregation = cfg['verification']['aggregation']
         if self.aggregation not in AGGREGATIONS:
             raise ValueError(
@@ -125,9 +126,16 @@ class NLIAuditor:
             verdict = self.label_order[verdict_idx]
             confidence = float(row[verdict_idx])
 
-            # One-way downgrade: an ENTAILMENT the model is not confident about
-            # becomes NEUTRAL. Nothing is ever promoted.
+            # One-way downgrades, in both directions: a verdict the model is not
+            # confident about falls back to NEUTRAL. Nothing is ever promoted.
+            # CONTRADICTION gets its own floor because a red underline is the
+            # highest-stakes claim in the UI -- it tells a reader the source
+            # actively refutes the sentence, and a coin-flip is not grounds for
+            # that. Unsupported and refuted are different claims; NEUTRAL is the
+            # honest verdict when the model cannot tell them apart.
             if verdict == 'ENTAILMENT' and confidence < self.threshold:
+                verdict = 'NEUTRAL'
+            elif verdict == 'CONTRADICTION' and confidence < self.contradiction_threshold:
                 verdict = 'NEUTRAL'
 
             winner = premises[best]

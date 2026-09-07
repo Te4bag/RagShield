@@ -17,6 +17,10 @@ models:
 verification:
   # Score threshold to consider something "Supported"
   entailment_threshold: 0.85
+  # Same floor for "Contradicted". A red underline claims the source refutes
+  # the sentence, so a low-confidence CONTRADICTION falls back to NEUTRAL.
+  # Both thresholds are hand-picked; deriving them from a ROC is PLAN.md E4.
+  contradiction_threshold: 0.85
   # How a sentence is scored against the retrieved chunks.
   #   max_entailment - each chunk is its own premise; the chunk with the
   #                    highest entailment probability decides the verdict
