@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 from chromadb.errors import ChromaError, NotFoundError
 from ingest import SUPPORTED_EXTENSIONS, DocumentLoader, list_documents
-from index import COLLECTION_NAME, chunk_documents, RagShieldIndex
+from index import COLLECTION_NAME, RagShieldIndex
 from rag import Retriever, RagGenerator
 from verify import NLIAuditor
 
@@ -336,6 +336,21 @@ with st.sidebar:
                     f.write(uploaded_file.getbuffer())
                 st.session_state.indexed = False  # Mark as needs re-indexing
     
+    if st.button("♻️ Rebuild Index", use_container_width=True,
+                 help="Drop and re-embed every document. Needed only if the "
+                      "index is suspected corrupt — ordinary uploads are "
+                      "picked up automatically."):
+        index = get_index()
+        if drop_collection(index):
+            # The handle now points at a deleted collection; re-open it so
+            # every cached Retriever sharing this index stays usable.
+            index.collection = index.client.get_or_create_collection(
+                name=COLLECTION_NAME, embedding_function=index.embedding_fn
+            )
+            st.session_state.indexed = False
+            st.success(" Index dropped — it will rebuild on the next query")
+            st.rerun()
+
     if st.button("🗑️ Clear All Documents", use_container_width=True):
         if os.path.exists(UPLOAD_DIR):
             shutil.rmtree(UPLOAD_DIR)
@@ -383,19 +398,29 @@ if st.button("🔍 Analyze Query", use_container_width=True, type="primary"):
             # Auto-index if needed
             if not st.session_state.indexed:
                 with st.spinner(" Indexing documents..."):
-                    loader = DocumentLoader(str(UPLOAD_DIR))
                     index = get_index()
-                    if drop_collection(index):
-                        index.collection = index.client.get_or_create_collection(
-                            name=COLLECTION_NAME, embedding_function=index.embedding_fn
+                    try:
+                        # Only new or changed documents are embedded; the
+                        # rest of the corpus is left where it is.
+                        plan = index.sync_documents(
+                            DocumentLoader(str(UPLOAD_DIR)).load()
                         )
-                        index.add_documents(chunk_documents(loader.load()))
                         st.session_state.indexed = True
+                    except ChromaError as exc:
+                        st.error(f"Indexing failed: {exc}")
 
-                # Indexing failed and drop_collection already reported why.
-                # Stop rather than querying a half-rebuilt collection.
+                # Stop rather than querying a half-built collection.
                 if not st.session_state.indexed:
                     st.stop()
+
+                touched = len(plan["added"]) + len(plan["updated"])
+                if touched or plan["removed"]:
+                    st.caption(
+                        f"Indexed {len(plan['added'])} new, "
+                        f"{len(plan['updated'])} changed, "
+                        f"{len(plan['removed'])} removed — "
+                        f"{len(plan['unchanged'])} already indexed and skipped."
+                    )
 
             with st.spinner("🛡️ Analyzing and verifying response..."):
                 retriever = get_retriever()
