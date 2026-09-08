@@ -1,6 +1,31 @@
 import fitz  # PyMuPDF
 import os
 import re
+from pathlib import Path
+
+# Every extension the loader can actually ingest. The UI reads this for its
+# uploader filter and its document listings, so the two cannot drift apart --
+# a .txt used to be indexed but never shown, and if it was the only file
+# present the app reported "No documents found".
+SUPPORTED_EXTENSIONS = (".pdf", ".txt")
+
+
+def list_documents(directory):
+    """Every file in `directory` the loader would ingest, sorted by name.
+
+    Matches `DocumentLoader.load()` exactly, including case-insensitivity, so
+    anything listed here is something the indexer will read. Globbing "*.pdf"
+    instead would disagree across platforms: pathlib's glob ignores case on
+    Windows but not on Linux, so a "REPORT.PDF" would be listed on one and
+    silently skipped on the other.
+    """
+    directory = Path(directory)
+    if not directory.is_dir():
+        return []
+    docs = [p for p in directory.iterdir()
+            if p.is_file() and p.suffix.lower() in SUPPORTED_EXTENSIONS]
+    return sorted(docs, key=lambda p: p.name.lower())
+
 
 class DocumentLoader:
     def __init__(self, directory_path):
@@ -13,9 +38,11 @@ class DocumentLoader:
             file_path = os.path.join(self.directory_path, filename)
             doc_data = None
             
-            if filename.endswith(".pdf"):
+            # Case-insensitive so the loader agrees with list_documents().
+            suffix = os.path.splitext(filename)[1].lower()
+            if suffix == ".pdf":
                 doc_data = self._load_pdf(file_path, filename)
-            elif filename.endswith(".txt"):
+            elif suffix == ".txt":
                 doc_data = self._load_txt(file_path, filename)
             
             # Length Guard: Only append if document has substantial content

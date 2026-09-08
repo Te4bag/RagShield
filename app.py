@@ -4,7 +4,7 @@ import os
 import shutil
 from pathlib import Path
 from chromadb.errors import ChromaError, NotFoundError
-from ingest import DocumentLoader
+from ingest import SUPPORTED_EXTENSIONS, DocumentLoader, list_documents
 from index import COLLECTION_NAME, chunk_documents, RagShieldIndex
 from rag import Retriever, RagGenerator
 from verify import NLIAuditor
@@ -318,10 +318,12 @@ with st.sidebar:
     st.markdown("---")
     
     uploaded_files = st.file_uploader(
-        "Upload PDF Documents", 
-        type=["pdf"], 
+        "Upload Documents",
+        # Derived from the loader, so the filter can never accept something
+        # the indexer skips -- or reject something it would have read.
+        type=[ext.lstrip(".") for ext in SUPPORTED_EXTENSIONS],
         accept_multiple_files=True,
-        help="Upload one or more PDF documents to build your knowledge base"
+        help="Upload one or more PDF or TXT documents to build your knowledge base"
     )
     
     # Auto-save uploaded files
@@ -348,7 +350,7 @@ with st.sidebar:
     
     # Show uploaded documents
     if os.path.exists(UPLOAD_DIR):
-        docs = list(UPLOAD_DIR.glob("*.pdf"))
+        docs = list_documents(UPLOAD_DIR)
         if docs:
             st.markdown("### 📄 Current Documents")
             for doc in docs:
@@ -373,10 +375,10 @@ if st.button("🔍 Analyze Query", use_container_width=True, type="primary"):
         st.warning(" Please enter a query")
     else:
         # Check if we need to index
-        docs = list(UPLOAD_DIR.glob("*.pdf")) if os.path.exists(UPLOAD_DIR) else []
-        
+        docs = list_documents(UPLOAD_DIR)
+
         if not docs:
-            st.error(" No documents found. Please upload PDF documents first.")
+            st.error(" No documents found. Please upload a PDF or TXT document first.")
         else:
             # Auto-index if needed
             if not st.session_state.indexed:
