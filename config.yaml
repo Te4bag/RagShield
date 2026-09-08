@@ -30,3 +30,8 @@ verification:
   # Pairs per forward pass. One response is n_sentences x top_k pairs, all
   # scored in a single batched call. Lower it if the GPU runs out of memory.
   batch_size: 32
+  # Input budget for the cross-encoder, in tokens. DeBERTa-v3 caps at 512.
+  # A longer (premise, sentence) pair is truncated silently, so the sentence
+  # would be scored against a partial source. Measured at top_k 3 with
+  # per-chunk aggregation: 134 tokens, comfortably inside the budget.
+  max_length: 512

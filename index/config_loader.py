@@ -22,6 +22,7 @@ DEFAULTS = {
         "contradiction_threshold": 0.85,
         "aggregation": "max_entailment",
         "batch_size": 32,
+        "max_length": 512,
     },
 }
 

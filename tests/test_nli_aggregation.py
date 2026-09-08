@@ -8,6 +8,8 @@ The sentence splitter is stubbed too. spaCy's segmentation is not what these
 tests are about, and letting it drift would make aggregation tests fail for
 unrelated reasons. Segmenter behaviour belongs to the loader/chunker suite.
 """
+import warnings
+
 import numpy as np
 import pytest
 
@@ -45,9 +47,17 @@ def build(monkeypatch, script=None, default=STRONG_NEUTRAL,
     """
     captured = {}
 
+    class StubTokenizer:
+        """Token count = words + 3 specials, so a test can aim at the budget."""
+        def __call__(self, premises, hypotheses, truncation=None):
+            return {"input_ids": [[0] * (len(p.split()) + len(h.split()) + 3)
+                                  for p, h in zip(premises, hypotheses)]}
+
     class StubCrossEncoder:
-        def __init__(self, model_name=None):
+        def __init__(self, model_name=None, max_length=None):
             self.model_name = model_name
+            self.max_length = max_length
+            self.tokenizer = StubTokenizer()
             self.model = type("M", (), {})()
             self.model.config = type("C", (), {})()
             self.model.config.id2label = dict(id2label or DEBERTA_LABELS)
@@ -328,3 +338,64 @@ def test_checkpoint_without_nli_labels_raises(monkeypatch):
 def test_unknown_aggregation_raises(monkeypatch):
     with pytest.raises(ValueError, match="Unknown verification.aggregation"):
         build(monkeypatch, aggregation="nonsense")
+
+
+# --------------------------------------------------------------- truncation
+
+def test_max_length_is_passed_to_the_checkpoint(monkeypatch):
+    """The guard compares against this number, so the model must share it."""
+    auditor = build(monkeypatch, sentences=["s"], max_length=256)
+
+    assert auditor.stub.max_length == 256
+    assert auditor.max_length == 256
+
+
+def test_no_warning_when_pairs_fit(monkeypatch):
+    auditor = build(monkeypatch, sentences=["a short sentence"], max_length=512)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        auditor.audit_response("ignored", [chunk("a_ch0")])
+
+    assert [w for w in caught if issubclass(w.category, RuntimeWarning)] == []
+
+
+def test_warns_when_a_pair_exceeds_the_budget(monkeypatch):
+    """Silent truncation is indistinguishable from an unsupported sentence."""
+    long_chunk = chunk("a_ch0", " ".join(["word"] * 60))
+    auditor = build(monkeypatch, sentences=["a short sentence"], max_length=32)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        auditor.audit_response("ignored", [long_chunk])
+
+    messages = [str(w.message) for w in caught
+                if issubclass(w.category, RuntimeWarning)]
+    assert len(messages) == 1
+    assert "truncated" in messages[0]
+    assert "32-token budget" in messages[0]
+
+
+def test_truncation_warns_only_once_per_auditor(monkeypatch):
+    """Otherwise an over-long corpus warns on every query, forever."""
+    long_chunk = chunk("a_ch0", " ".join(["word"] * 60))
+    auditor = build(monkeypatch, sentences=["a short sentence"], max_length=32)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        for _ in range(3):
+            auditor.audit_response("ignored", [long_chunk])
+
+    assert len([w for w in caught if issubclass(w.category, RuntimeWarning)]) == 1
+
+
+def test_verdicts_are_still_produced_when_truncated(monkeypatch):
+    """The guard reports; it must not swallow the audit."""
+    long_chunk = chunk("a_ch0", " ".join(["word"] * 60))
+    auditor = build(monkeypatch, sentences=["one", "two"], max_length=32)
+
+    with warnings.catch_warnings(record=True):
+        warnings.simplefilter("always")
+        results = auditor.audit_response("ignored", [long_chunk])
+
+    assert len(results) == 2

@@ -1,3 +1,5 @@
+import warnings
+
 from sentence_transformers import CrossEncoder
 from index import cfg
 from .segmenter import split_into_sentences
@@ -40,7 +42,10 @@ class NLIAuditor:
         # Defaults live in index.config_loader.DEFAULTS, so cfg is always fully
         # populated -- a missing key is a config bug and should raise here.
         model_name = cfg['models']['nli_model']
-        self.model = CrossEncoder(model_name)
+        # Stated rather than inherited: the truncation guard below compares
+        # against this number, so it must be the one the model actually uses.
+        self.max_length = cfg['verification']['max_length']
+        self.model = CrossEncoder(model_name, max_length=self.max_length)
         self.threshold = cfg['verification']['entailment_threshold']
         self.contradiction_threshold = cfg['verification']['contradiction_threshold']
         self.aggregation = cfg['verification']['aggregation']
@@ -52,6 +57,7 @@ class NLIAuditor:
             )
         self.label_order = _label_order(self.model, model_name)
         self.entailment_index = self.label_order.index('ENTAILMENT')
+        self._truncation_warned = False
 
     def _premises(self, retrieved_context):
         """Normalise the context into a list of premise records.
@@ -80,6 +86,47 @@ class NLIAuditor:
                     "doc_id": chunk.get("doc_id"),
                 })
         return premises
+
+    def _warn_if_truncated(self, pairs):
+        """Warn once if any (premise, sentence) pair exceeds the input budget.
+
+        The tokenizer truncates silently. A sentence judged against a truncated
+        premise is judged against a *partial* source, and in the output that is
+        indistinguishable from a sentence the source genuinely fails to support
+        -- so the failure is invisible exactly where it matters.
+
+        Not a live problem at `top_k: 3` with per-chunk aggregation, where the
+        longest pair measured 134 tokens against 512. This guards the settings
+        that would make it one: a larger `top_k`, a larger `chunk_size`, denser
+        source text, or the `concatenate` baseline, whose premise is every
+        retrieved chunk joined together.
+        """
+        if self._truncation_warned or not pairs:
+            return
+        tokenizer = getattr(self.model, "tokenizer", None)
+        if tokenizer is None:
+            return
+
+        encoded = tokenizer([p for p, _ in pairs], [h for _, h in pairs],
+                            truncation=False)
+        longest = max(len(ids) for ids in encoded["input_ids"])
+        if longest <= self.max_length:
+            return
+
+        # Once per auditor: the same over-long corpus would otherwise warn on
+        # every query for the life of the process.
+        self._truncation_warned = True
+        warnings.warn(
+            f"NLI input truncated: the longest (premise, sentence) pair is "
+            f"{longest} tokens against a {self.max_length}-token budget, so "
+            f"{sum(len(i) > self.max_length for i in encoded['input_ids'])} of "
+            f"{len(pairs)} pairs lose their tail. Those sentences are being "
+            f"judged against a partial source. Lower retrieval.top_k or "
+            f"ingestion.chunk_size, or raise verification.max_length if the "
+            f"checkpoint supports a longer input.",
+            RuntimeWarning,
+            stacklevel=3,
+        )
 
     def _distributions(self, pairs):
         """Softmaxed label distributions for every (premise, sentence) pair.
@@ -126,6 +173,7 @@ class NLIAuditor:
         # sentence i. P3 multiplied the pair count by top_k, which is what makes
         # batching worth doing here rather than one call per sentence.
         pairs = [(text, sentence) for sentence in sentences for text in premise_texts]
+        self._warn_if_truncated(pairs)
         probs = self._distributions(pairs).reshape(
             len(sentences), len(premise_texts), -1
         )
