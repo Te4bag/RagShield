@@ -34,6 +34,9 @@ class DocumentLoader:
 
     def load(self):
         """Walks through the directory and loads supported files, skipping empty ones."""
+        # Reset first: without this a reused loader appends to the previous
+        # result and returns every document twice.
+        self.documents = []
         for filename in os.listdir(self.directory_path):
             file_path = os.path.join(self.directory_path, filename)
             doc_data = None
