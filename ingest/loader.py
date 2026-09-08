@@ -1,4 +1,4 @@
-import fitz  # PyMuPDF
+import pymupdf
 import os
 import re
 from pathlib import Path
@@ -57,7 +57,7 @@ class DocumentLoader:
     def _load_pdf(self, path, name):
         text = ""
         try:
-            with fitz.open(path) as doc:
+            with pymupdf.open(path) as doc:
                 for page in doc:
                     text += page.get_text("text") + "\n"
             
