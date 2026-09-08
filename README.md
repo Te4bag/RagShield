@@ -71,7 +71,6 @@ Create a `.env` file in the root directory:
 
 ```env
 GROQ_API_KEY=your_api_key_here
-PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
 ```
 
 ### 3. Install Dependencies
@@ -79,6 +78,23 @@ PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
 ```bash
 pip install -r requirements.txt
 ```
+
+Dependencies are pinned, because the evaluation numbers are only meaningful
+against a known stack. This also installs the `en_core_web_sm` spaCy model,
+which `verify/segmenter.py` loads **at import time** — without it the app
+crashes on first import. The CLI equivalent is
+`python -m spacy download en_core_web_sm`.
+
+To run the tests:
+
+```bash
+pip install -r requirements-dev.txt && pytest
+```
+
+**GPU note.** The pinned `torch==2.10.0` is the CPU build from PyPI. Timings in
+this repo were measured on `torch==2.10.0+cu128` from
+<https://download.pytorch.org/whl/cu128>. Verdicts are identical either way;
+latency is not.
 
 ### 4. Prepare Your Documents
 

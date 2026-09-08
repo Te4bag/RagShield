@@ -1,13 +1,48 @@
-pymupdf
-pypdf
-langchain-text-splitters
+# Runtime dependencies, pinned. Phase 3 benchmark numbers are only meaningful
+# against a known stack, so this file records the versions the project was
+# actually developed and measured against (2026-09-08, from pip freeze).
+#
+# Dev/test dependencies live in requirements-dev.txt.
 
-chromadb
-sentence-transformers
-protobuf==3.20.3
-spacy
+# --- ingestion ---
+pymupdf==1.28.2
 
-groq
-streamlit
-python-dotenv
-pyyaml
+# --- chunking and indexing ---
+langchain-text-splitters==1.1.2
+chromadb==1.5.9
+
+# --- the verification stack -------------------------------------------------
+# These decide the verdicts, so they are pinned explicitly rather than left to
+# transitive resolution. Changing any of them invalidates a benchmark run.
+sentence-transformers==6.0.0
+transformers==5.15.0
+numpy==2.2.6
+
+# Measured on the CUDA 12.8 build (torch 2.10.0+cu128, installed from
+# https://download.pytorch.org/whl/cu128). Plain `torch==2.10.0` from PyPI is
+# the CPU build: verdicts are the same, latency numbers are not.
+torch==2.10.0
+
+# --- sentence segmentation --------------------------------------------------
+# The model is pinned as well as the library: segmentation decides how many
+# sentences get audited at all, so a different en_core_web_sm changes results.
+# Installed from the release wheel so `pip install -r requirements.txt` is
+# self-sufficient. The CLI equivalent is:
+#   python -m spacy download en_core_web_sm
+spacy==3.8.15
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+
+# --- generation and app ---
+groq==1.6.0
+streamlit==1.61.1
+python-dotenv==1.2.3
+PyYAML==6.0.3
+
+# --- deliberately removed ---------------------------------------------------
+# pypdf             never imported anywhere; the loader uses pymupdf (fitz).
+# protobuf==3.20.3  this pin did not describe reality -- 7.35.1 is what is
+#                   installed and what every measurement in PLAN.md was taken
+#                   against. chromadb and sentence-transformers both import
+#                   cleanly under it with PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
+#                   unset, so the workaround the docs described is obsolete.
+#                   Left unpinned: nothing here constrains it any more.
