@@ -20,3 +20,7 @@ chroma_db/
 
 # Test cache
 .pytest_cache/
+
+# Generated eval labels: rebuilt from the pinned dataset by
+# `python -m eval.datasets ragtruth build`, never committed.
+eval/data/ragtruth/
