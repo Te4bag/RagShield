@@ -371,6 +371,9 @@ class Example:
     context: str
     output: str
     sentences: tuple
+    # RAGTruth's own answer-level label is "has any span". Carried separately
+    # from the sentence labels so the answer gold never depends on segmentation.
+    n_spans: int = 0
 
 
 def join(labels, raw_rows):
@@ -390,7 +393,7 @@ def join(labels, raw_rows):
         examples.append(Example(
             id=rec['id'], task_type=rec['task_type'], model=rec['model'],
             quality=rec['quality'], query=row['query'], context=row['context'],
-            output=text,
+            output=text, n_spans=rec['n_spans'],
             sentences=tuple(
                 Sentence(text[s['start']:s['end']], s['start'], s['end'],
                          s['unsupported'], tuple(s['label_types']),

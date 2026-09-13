@@ -286,7 +286,58 @@ def test_empty_context_returns_neutral_rows_without_dropping_sentences(monkeypat
     assert len(results) == len(sentences)
     assert [r["verdict"] for r in results] == ["NEUTRAL"] * 3
     assert all(r["evidence"] is None for r in results)
+    # No distribution was computed, and a fabricated one would be scored.
+    assert all(r["probabilities"] is None for r in results)
     assert auditor.stub.calls == []          # the model is never consulted
+
+
+# ----------------------------------------------------------- probabilities
+
+def test_probabilities_are_the_winning_chunks_unrounded_distribution(monkeypatch):
+    """Evaluation ranks on these, so they must be exact, not the 2-place
+    `confidence`, and must come from the chunk that decided the verdict."""
+    s = "a sentence"
+    auditor = build(monkeypatch, sentences=[s], script={
+        ("body of a_ch0", s): STRONG_NEUTRAL,
+        ("body of b_ch1", s): WEAK_ENTAIL,
+    })
+
+    (result,) = auditor.audit_response("ignored", [chunk("a_ch0"), chunk("b_ch1")])
+
+    expected = softmax(WEAK_ENTAIL)             # deberta order: C, E, N
+    assert result["probabilities"] == {
+        "CONTRADICTION": expected[0], "ENTAILMENT": expected[1], "NEUTRAL": expected[2],
+    }
+    assert result["confidence"] == round(max(expected), 2)
+    assert result["probabilities"]["ENTAILMENT"] != result["confidence"]
+
+
+def test_probabilities_are_keyed_by_label_not_by_logit_position(monkeypatch):
+    """Under roberta's ordering the entailment logit is index 2; the key must
+    still say ENTAILMENT, or evaluation would rank on the neutral score."""
+    s = "a sentence"
+    auditor = build(monkeypatch, sentences=[s], id2label=ROBERTA_LABELS,
+                    script={("body of a_ch0", s): (0.0, 0.0, 8.0)})
+
+    (result,) = auditor.audit_response("ignored", [chunk("a_ch0")])
+
+    assert result["probabilities"]["ENTAILMENT"] == pytest.approx(softmax((0, 0, 8))[2])
+    assert result["verdict"] == "ENTAILMENT"
+
+
+def test_thresholding_entailment_probability_reproduces_the_green_decision(monkeypatch):
+    """The E3 answer rule relies on `verdict == ENTAILMENT` being exactly
+    `P(entailment) >= threshold`. Check it on both sides of the gate."""
+    sentences = ["strong", "weak", "contra", "neutral"]
+    rows = [STRONG_ENTAIL, WEAK_ENTAIL, STRONG_CONTRA, STRONG_NEUTRAL]
+    auditor = build(monkeypatch, sentences=sentences,
+                    script={("body of a_ch0", s): r for s, r in zip(sentences, rows)})
+
+    results = auditor.audit_response("ignored", [chunk("a_ch0")])
+
+    for r in results:
+        green = r["probabilities"]["ENTAILMENT"] >= auditor.threshold
+        assert (r["verdict"] == "ENTAILMENT") == green
 
 
 def test_blank_chunks_are_skipped(monkeypatch):

@@ -161,7 +161,7 @@ class NLIAuditor:
             # Nothing to check against. Say so rather than dropping sentences.
             return [
                 {"sentence": s, "verdict": "NEUTRAL", "confidence": 0.0,
-                 "evidence": None}
+                 "probabilities": None, "evidence": None}
                 for s in sentences
             ]
 
@@ -211,6 +211,15 @@ class NLIAuditor:
                 "sentence": sentence,
                 "verdict": verdict,
                 "confidence": round(confidence, 2),
+                # The winning chunk's full distribution, unrounded. The UI does
+                # not need it; evaluation does. `confidence` is rounded to 2
+                # places and belongs to whichever class won, so ranking on it
+                # would tie most sentences and mix classes. Thresholding
+                # `probabilities['ENTAILMENT']` at `threshold` reproduces the
+                # green/not-green decision exactly.
+                "probabilities": {
+                    label: float(p) for label, p in zip(self.label_order, row)
+                },
                 "evidence": {
                     "chunk_id": winner["chunk_id"],
                     "doc_id": winner["doc_id"],
