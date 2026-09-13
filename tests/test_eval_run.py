@@ -54,7 +54,7 @@ class StubAuditor:
             rest = (1.0 - p) / 2
             out.append({'sentence': s,
                         'verdict': 'ENTAILMENT' if p >= self.threshold else 'NEUTRAL',
-                        'confidence': round(max(p, rest), 2),
+                        'entailment': p,
                         'probabilities': {'ENTAILMENT': p, 'NEUTRAL': rest,
                                           'CONTRADICTION': rest}})
         return out
@@ -161,7 +161,7 @@ def test_a_sentence_with_no_premise_scores_zero_entailment():
 
     class NoPremise(StubAuditor):
         def audit_response(self, text, premises):
-            return [{'sentence': 'Claim here.', 'verdict': 'NEUTRAL', 'confidence': 0.0,
+            return [{'sentence': 'Claim here.', 'verdict': 'NEUTRAL', 'entailment': None,
                      'probabilities': None, 'evidence': None}]
 
     rec = run.score_example(ex, NoPremise({}))
@@ -323,9 +323,9 @@ def test_an_overridden_tau_is_labelled_as_such():
 
 def test_tau_defaults_to_the_derived_floor_when_the_run_recorded_one():
     meta = _meta(config={'nli_model': 'stub', 'verification': {
-        'entailment_threshold': 0.85, 'unsupported_threshold': 0.000552}})
+        'entailment_threshold': 0.85, 'low_support_threshold': 0.000552}})
 
-    assert run.config_tau(meta) == (0.000552, 'unsupported_threshold')
+    assert run.config_tau(meta) == (0.000552, 'low_support_threshold')
     assert 'derived on train in E4' in run.build_report(meta, {'max_entailment': RECORDS},
                                                         tau=0.000552)
 
@@ -356,6 +356,20 @@ def test_ablation_table_has_a_row_per_aggregation_and_scope():
         for scope in ('QA', 'Summary', 'ALL'):
             assert any(line.startswith(aggregation) and f' {scope} ' in f' {line} '
                        for line in table.splitlines())
+
+
+def test_crosstab_shows_only_the_verdicts_a_run_produced():
+    """Pre-P8 runs have CONTRADICTION and no LOW_SUPPORT; later runs the reverse."""
+    old = [{'unsupported': False, 'label_types': [], 'verdict': v}
+           for v in ('ENTAILMENT', 'CONTRADICTION')]
+    new = [{'unsupported': True, 'label_types': ['Evident Conflict'], 'verdict': v}
+           for v in ('NEUTRAL', 'LOW_SUPPORT')]
+
+    old_header = run._crosstab(old).splitlines()[0]
+    new_header = run._crosstab(new).splitlines()[0]
+
+    assert 'CONTRADICTION' in old_header and 'LOW_SUPPORT' not in old_header
+    assert 'LOW_SUPPORT' in new_header and 'CONTRADICTION' not in new_header
 
 
 def test_implicit_true_sensitivity_excludes_those_sentences():

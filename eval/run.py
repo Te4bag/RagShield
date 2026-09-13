@@ -15,8 +15,10 @@ score is `1 - P(entailment)`; the positive class is *unsupported*.
 
 Sentence -> answer: an answer is predicted hallucinated iff its minimum
 sentence P(entailment) is below `tau`, and its score is `1 - min P(entailment)`.
-With `tau > 0.5` that is exactly "the app would leave at least one sentence
-without a green underline". Gold is RAGTruth's own answer label: any span.
+`tau` defaults to the run's `low_support_threshold`, so the rule reads "the app
+shows at least one sentence orange" (P8); runs scored before E4 fall back to
+`entailment_threshold`, "at least one sentence not green". Gold is RAGTruth's
+own answer label: any span.
 
 Context: every blank-line-separated passage of the RAGTruth context is treated
 as a document and chunked with the app's own chunker, and all chunks are
@@ -316,8 +318,14 @@ def _gold_category(sentence):
     return 'conflict' if any('Conflict' in t for t in sentence['label_types']) else 'baseless'
 
 
+# Column order for the crosstab. CONTRADICTION only appears in runs scored
+# before P8 removed red; LOW_SUPPORT only in runs scored after it.
+VERDICT_COLUMNS = ('ENTAILMENT', 'NEUTRAL', 'LOW_SUPPORT', 'CONTRADICTION')
+
+
 def _crosstab(sentences):
-    verdicts = ('ENTAILMENT', 'NEUTRAL', 'CONTRADICTION')
+    present = {s['verdict'] for s in sentences}
+    verdicts = [v for v in VERDICT_COLUMNS if v in present] or ['NEUTRAL']
     corner = 'gold / verdict'
     lines = [f"{corner:<16}" + ''.join(f"{v:>15}" for v in verdicts) + f"{'n':>8}"]
     for category in ('supported', 'baseless', 'conflict'):
@@ -485,13 +493,13 @@ def build_report(meta, records_by_aggregation, tau):
 def config_tau(meta):
     """The detector threshold a run's own config implies, and its key.
 
-    Since E4 that is `unsupported_threshold`, the derived floor below which a
+    Since E4 that is `low_support_threshold`, the derived floor below which a
     sentence is flagged. Runs scored before E4 do not record it, and their
     reports stay reproducible by falling back to the gate they were run with.
     """
     verification = meta['config']['verification']
-    if 'unsupported_threshold' in verification:
-        return verification['unsupported_threshold'], 'unsupported_threshold'
+    if 'low_support_threshold' in verification:
+        return verification['low_support_threshold'], 'low_support_threshold'
     return verification['entailment_threshold'], 'entailment_threshold'
 
 
@@ -499,10 +507,10 @@ def _tau_line(meta, tau):
     value, key = config_tau(meta)
     if tau != value:
         return f"tau = {tau}  (overridden; this run's config has {key} {value})"
-    if key == 'unsupported_threshold':
-        return f"tau = {tau}  (verification.unsupported_threshold, derived on train in E4)"
+    if key == 'low_support_threshold':
+        return f"tau = {tau}  (verification.low_support_threshold, derived on train in E4)"
     return (f"tau = {tau}  (verification.entailment_threshold - a run scored before E4 "
-            f"derived unsupported_threshold)")
+            f"derived low_support_threshold)")
 
 
 def run_report(results_dir, tau=None):

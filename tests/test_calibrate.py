@@ -111,12 +111,17 @@ def s(p_ent, p_con, unsupported):
             'p_neutral': 1.0 - p_ent - p_con, 'unsupported': unsupported}
 
 
-def test_verdict_at_mirrors_the_auditor():
-    assert cal.verdict_at(s(0.90, 0.05, False), 0.85, 0.85) == 'ENTAILMENT'
-    assert cal.verdict_at(s(0.80, 0.05, False), 0.85, 0.85) == 'NEUTRAL'     # demoted
-    assert cal.verdict_at(s(0.02, 0.95, True), 0.85, 0.85) == 'CONTRADICTION'
-    assert cal.verdict_at(s(0.02, 0.60, True), 0.85, 0.85) == 'NEUTRAL'      # demoted
-    assert cal.verdict_at(s(0.10, 0.10, True), 0.85, 0.85) == 'NEUTRAL'      # argmax neutral
+def test_green_is_entailment_at_or_above_the_gate():
+    assert cal.is_green(s(0.85, 0.05, False), 0.85)
+    assert not cal.is_green(s(0.8499, 0.05, False), 0.85)
+
+
+def test_red_reproduces_the_removed_underline():
+    """Argmax CONTRADICTION at or above the gate, as the pre-P8 auditor did."""
+    assert cal.was_red(s(0.02, 0.95, True), 0.85)
+    assert not cal.was_red(s(0.02, 0.60, True), 0.85)     # below the gate
+    assert not cal.was_red(s(0.10, 0.10, True), 0.0)      # neutral is the argmax
+    assert not cal.was_red(s(0.90, 0.09, False), 0.0)     # entailment is the argmax
 
 
 SENTENCES = [
@@ -131,8 +136,7 @@ SENTENCES = [
 
 
 def test_green_audit_precision_and_reach():
-    rows = {r['gate']: r for r in cal.gate_audit(SENTENCES, 'ENTAILMENT',
-                                                 (0.85, 0.90), 0.85, 0.85)}
+    rows = {r['gate']: r for r in cal.gate_audit(SENTENCES, 'green', (0.85, 0.90))}
 
     # .85: greens are .99 .92 .88 -> 2 of 3 right; supported sentences total 5.
     assert rows[0.85]['n'] == 3
@@ -143,8 +147,7 @@ def test_green_audit_precision_and_reach():
 
 
 def test_red_audit_precision_rises_with_the_gate():
-    rows = {r['gate']: r for r in cal.gate_audit(SENTENCES, 'CONTRADICTION',
-                                                 (0.85, 0.90, 0.95), 0.85, 0.85)}
+    rows = {r['gate']: r for r in cal.gate_audit(SENTENCES, 'red', (0.85, 0.90, 0.95))}
 
     assert (rows[0.85]['n'], rows[0.85]['precision']) == (3, pytest.approx(1 / 3))
     assert (rows[0.90]['n'], rows[0.90]['precision']) == (2, pytest.approx(1 / 2))

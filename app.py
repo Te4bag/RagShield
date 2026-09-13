@@ -1,5 +1,4 @@
 import streamlit as st
-import html
 import os
 import shutil
 from pathlib import Path
@@ -8,6 +7,7 @@ from ingest import SUPPORTED_EXTENSIONS, DocumentLoader, list_documents
 from index import COLLECTION_NAME, RagShieldIndex
 from rag import Retriever, RagGenerator
 from verify import NLIAuditor
+import ui
 
 # 1. Configuration & Enhanced Styling
 st.set_page_config(
@@ -110,75 +110,6 @@ st.markdown("""
         color: #e5e5e5;
     }
     
-    /* Inline verification - sentences with colored underlines */
-    .sentence-verified {
-        position: relative;
-        cursor: help;
-        border-bottom: 3px solid rgba(16, 185, 129, 0.6);
-        transition: all 0.2s ease;
-        padding-bottom: 2px;
-    }
-    
-    .sentence-verified:hover {
-        background: rgba(16, 185, 129, 0.1);
-        border-bottom-color: #10b981;
-    }
-    
-    .sentence-contradiction {
-        position: relative;
-        cursor: help;
-        border-bottom: 3px solid rgba(239, 68, 68, 0.6);
-        transition: all 0.2s ease;
-        padding-bottom: 2px;
-    }
-    
-    .sentence-contradiction:hover {
-        background: rgba(239, 68, 68, 0.1);
-        border-bottom-color: #ef4444;
-    }
-    
-    .sentence-neutral {
-        position: relative;
-        cursor: help;
-        border-bottom: 3px solid rgba(251, 191, 36, 0.6);
-        transition: all 0.2s ease;
-        padding-bottom: 2px;
-    }
-    
-    .sentence-neutral:hover {
-        background: rgba(251, 191, 36, 0.1);
-        border-bottom-color: #fbbf24;
-    }
-    
-    /* Tooltip on hover */
-    .sentence-verified::after,
-    .sentence-contradiction::after,
-    .sentence-neutral::after {
-        content: attr(data-tooltip);
-        position: absolute;
-        bottom: 100%;
-        left: 50%;
-        transform: translateX(-50%) translateY(-8px);
-        background: rgba(0, 0, 0, 0.95);
-        color: white;
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-size: 0.85rem;
-        white-space: nowrap;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.2s ease, transform 0.2s ease;
-        z-index: 1000;
-        font-family: 'JetBrains Mono', monospace;
-    }
-    
-    .sentence-verified:hover::after,
-    .sentence-contradiction:hover::after,
-    .sentence-neutral:hover::after {
-        opacity: 1;
-        transform: translateX(-50%) translateY(-12px);
-    }
-    
     /* Stats badges */
     .stats-container {
         display: flex;
@@ -231,9 +162,6 @@ st.markdown("""
         border-radius: 2px;
     }
     
-    .legend-verified { background: #10b981; }
-    .legend-contradiction { background: #ef4444; }
-    .legend-neutral { background: #fbbf24; }
     
     /* Expander */
     .streamlit-expanderHeader {
@@ -255,6 +183,7 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+st.markdown(f"<style>{ui.underline_css()}</style>", unsafe_allow_html=True)
 
 # Initialize session state
 if 'indexed' not in st.session_state:
@@ -445,133 +374,30 @@ if st.button("🔍 Analyze Query", use_container_width=True, type="primary"):
                     st.markdown("---")
                     st.markdown("###  Audit Summary")
                     
-                    entailment_count = sum(1 for r in audit_results if r['verdict'] == 'ENTAILMENT')
-                    contradiction_count = sum(1 for r in audit_results if r['verdict'] == 'CONTRADICTION')
-                    neutral_count = sum(1 for r in audit_results if r['verdict'] == 'NEUTRAL')
-                    total = len(audit_results)
-                    
-                    # Stats badges
-                    stats_html = f"""
-                    <div class="stats-container">
-                        <div class="stat-badge">
-                            <span class="stat-value" style="color: #10b981;">{entailment_count}</span>
-                            <span class="stat-label">✅ Verified</span>
-                        </div>
-                        <div class="stat-badge">
-                            <span class="stat-value" style="color: #ef4444;">{contradiction_count}</span>
-                            <span class="stat-label">❌ Contradictions</span>
-                        </div>
-                        <div class="stat-badge">
-                            <span class="stat-value" style="color: #fbbf24;">{neutral_count}</span>
-                            <span class="stat-label">⚠️ Neutral</span>
-                        </div>
-                        <div class="stat-badge">
-                            <span class="stat-value">{total}</span>
-                            <span class="stat-label"> Total Claims</span>
-                        </div>
-                    </div>
-                    """
-                    st.markdown(stats_html, unsafe_allow_html=True)
-                    
+                    # Counts, legend, underlines and the per-sentence panel all
+                    # come from ui.verdicts, so wording and colour live in one
+                    # tested place. There is no red: PLAN.md D7.
+                    st.markdown(ui.stats_html(audit_results), unsafe_allow_html=True)
+
                     # 4. Response with inline verification
                     st.markdown("### 💬 Response (Hover for verification)")
-                    
-                    # Legend
-                    legend_html = """
-                    <div class="legend-container">
-                        <div class="legend-item">
-                            <div class="legend-line legend-verified"></div>
-                            <span>Verified</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-line legend-contradiction"></div>
-                            <span>Contradicted</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-line legend-neutral"></div>
-                            <span>Neutral</span>
-                        </div>
-                    </div>
-                    """
-                    st.markdown(legend_html, unsafe_allow_html=True)
-                    
-                    # Build response with inline verification
-                    response_html = '<div class="response-container">'
-                    
-                    for idx, res in enumerate(audit_results):
-                        verdict = res['verdict']
-                        confidence = res['confidence']
-                        sentence = res['sentence']
-                        
-                        # Determine class and tooltip
-                        if verdict == 'ENTAILMENT':
-                            css_class = "sentence-verified"
-                            icon = "✅"
-                        elif verdict == 'CONTRADICTION':
-                            css_class = "sentence-contradiction"
-                            icon = "❌"
-                        else:
-                            css_class = "sentence-neutral"
-                            icon = "⚠️"
-                        
-                        # Tooltip names the deciding chunk. Escaped because
-                        # the sentence and chunk id both come from uploaded
-                        # documents and land in an HTML attribute / body.
-                        evidence = res.get('evidence') or {}
-                        source = evidence.get('chunk_id')
-                        tooltip = f"{icon} {verdict} | Confidence: {confidence:.2f}"
-                        if source:
-                            tooltip += f" | {source}"
+                    st.markdown(ui.legend_html(), unsafe_allow_html=True)
+                    st.markdown(ui.response_html(audit_results), unsafe_allow_html=True)
 
-                        # Wrap sentence in span with tooltip
-                        response_html += (
-                            f'<span class="{css_class}" '
-                            f'data-tooltip="{html.escape(tooltip, quote=True)}">'
-                            f'{html.escape(sentence)}</span> '
-                        )
-                    
-                    response_html += '</div>'
-                    st.markdown(response_html, unsafe_allow_html=True)
-                    
                     # Detailed analysis in expander
                     with st.expander("🔍 View Detailed Analysis", expanded=False):
                         for idx, res in enumerate(audit_results, 1):
-                            verdict = res['verdict']
-                            confidence = res['confidence']
-                            
-                            if verdict == 'ENTAILMENT':
-                                icon = "✅"
-                                color = "#10b981"
-                            elif verdict == 'CONTRADICTION':
-                                icon = "❌"
-                                color = "#ef4444"
-                            else:
-                                icon = "⚠️"
-                                color = "#fbbf24"
-                            
-                            st.markdown(f"""
-                            **{idx}. {icon} {res['sentence']}**
-                            - Verdict: <span style="color: {color}; font-weight: 600;">{verdict}</span>
-                            - Confidence: {confidence:.2f}
-                            """, unsafe_allow_html=True)
+                            st.markdown(ui.analysis_markdown(idx, res), unsafe_allow_html=True)
 
-                            # The chunk this verdict was actually decided against.
-                            # Labelled by verdict: for NEUTRAL it is the closest
-                            # passage, NOT support, and calling it "supporting"
-                            # would assert exactly what NEUTRAL denies.
+                            # The chunk this verdict was actually decided against,
+                            # introduced by verdict-specific wording.
                             evidence = res.get('evidence') or {}
                             if evidence.get('text'):
-                                if verdict == 'ENTAILMENT':
-                                    lead = "Supported by"
-                                elif verdict == 'CONTRADICTION':
-                                    lead = "Contradicted by"
-                                else:
-                                    lead = "Closest passage (does not establish the claim)"
                                 # chunk_id is "{doc_id}_ch{i}", so it already
                                 # names the document -- no need to print both.
                                 where = evidence.get('chunk_id') or evidence.get('doc_id') or "unknown chunk"
                                 passage = " ".join(evidence['text'].split())
-                                st.markdown(f"- {lead} — `{where}`")
+                                st.markdown(f"- {ui.style(res['verdict'])['lead']} — `{where}`")
                                 st.caption(f"> {passage}")
                             st.markdown("---")
 

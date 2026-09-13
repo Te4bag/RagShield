@@ -15,6 +15,17 @@ _REQUIRED_LABELS = {'contradiction', 'neutral', 'entailment'}
 #                    evaluation baseline; it collapses most verdicts to NEUTRAL.
 AGGREGATIONS = ('max_entailment', 'concatenate')
 
+# Every verdict audit_response can return, strongest support first. All three
+# are read off one number, the winning chunk's P(entailment):
+#   ENTAILMENT   P >= entailment_threshold    green: the source supports it
+#   NEUTRAL      between the two gates        yellow: not established
+#   LOW_SUPPORT  P < low_support_threshold    orange: far weaker support than
+#                                             usual -- check it
+# There is no CONTRADICTION verdict. PLAN.md E4 measured red on RAGTruth QA at
+# 7.7% precision against a 6.7% base rate, at every gate up to 0.99: a red
+# underline was barely more informative than a random sentence (D7).
+VERDICTS = ('ENTAILMENT', 'NEUTRAL', 'LOW_SUPPORT')
+
 
 def _label_order(model, model_name):
     """Return the verdict for each output index, read from the checkpoint.
@@ -47,13 +58,27 @@ class NLIAuditor:
         self.max_length = cfg['verification']['max_length']
         self.model = CrossEncoder(model_name, max_length=self.max_length)
         self.threshold = cfg['verification']['entailment_threshold']
-        self.contradiction_threshold = cfg['verification']['contradiction_threshold']
+        self.low_support_threshold = cfg['verification']['low_support_threshold']
         self.aggregation = cfg['verification']['aggregation']
         self.batch_size = cfg['verification']['batch_size']
         if self.aggregation not in AGGREGATIONS:
             raise ValueError(
                 f"Unknown verification.aggregation {self.aggregation!r}; "
                 f"expected one of {AGGREGATIONS}."
+            )
+        # Green must mean entailment is the most likely reading. Above 0.5 that
+        # holds automatically; at or below it a sentence could turn green while
+        # the model thinks contradiction likelier.
+        if not 0.5 < self.threshold <= 1.0:
+            raise ValueError(
+                f"verification.entailment_threshold must be in (0.5, 1], got "
+                f"{self.threshold}."
+            )
+        if not 0.0 <= self.low_support_threshold < self.threshold:
+            raise ValueError(
+                f"verification.low_support_threshold must be in [0, "
+                f"entailment_threshold), got {self.low_support_threshold} "
+                f"against {self.threshold}; the gates would overlap."
             )
         self.label_order = _label_order(self.model, model_name)
         self.entailment_index = self.label_order.index('ENTAILMENT')
@@ -159,8 +184,10 @@ class NLIAuditor:
 
         if not premises:
             # Nothing to check against. Say so rather than dropping sentences.
+            # NEUTRAL, not LOW_SUPPORT: that verdict is a measured statement
+            # about a score, and here there is no score.
             return [
-                {"sentence": s, "verdict": "NEUTRAL", "confidence": 0.0,
+                {"sentence": s, "verdict": "NEUTRAL", "entailment": None,
                  "probabilities": None, "evidence": None}
                 for s in sentences
             ]
@@ -190,33 +217,23 @@ class NLIAuditor:
             best = int(np.argmax(block[:, self.entailment_index]))
             row = block[best]
 
-            verdict_idx = int(np.argmax(row))
-            verdict = self.label_order[verdict_idx]
-            confidence = float(row[verdict_idx])
-
-            # One-way downgrades, in both directions: a verdict the model is not
-            # confident about falls back to NEUTRAL. Nothing is ever promoted.
-            # CONTRADICTION gets its own floor because a red underline is the
-            # highest-stakes claim in the UI -- it tells a reader the source
-            # actively refutes the sentence, and a coin-flip is not grounds for
-            # that. Unsupported and refuted are different claims; NEUTRAL is the
-            # honest verdict when the model cannot tell them apart.
-            if verdict == 'ENTAILMENT' and confidence < self.threshold:
-                verdict = 'NEUTRAL'
-            elif verdict == 'CONTRADICTION' and confidence < self.contradiction_threshold:
+            entailment = float(row[self.entailment_index])
+            if entailment >= self.threshold:
+                verdict = 'ENTAILMENT'
+            elif entailment < self.low_support_threshold:
+                verdict = 'LOW_SUPPORT'
+            else:
                 verdict = 'NEUTRAL'
 
             winner = premises[best]
             audit_results.append({
                 "sentence": sentence,
                 "verdict": verdict,
-                "confidence": round(confidence, 2),
-                # The winning chunk's full distribution, unrounded. The UI does
-                # not need it; evaluation does. `confidence` is rounded to 2
-                # places and belongs to whichever class won, so ranking on it
-                # would tie most sentences and mix classes. Thresholding
-                # `probabilities['ENTAILMENT']` at `threshold` reproduces the
-                # green/not-green decision exactly.
+                # The number the verdict was read from, unrounded. Floors sit
+                # near 0.0006, so rounding would erase the distinction.
+                "entailment": entailment,
+                # The winning chunk's full distribution, for evaluation and the
+                # Detailed Analysis panel.
                 "probabilities": {
                     label: float(p) for label, p in zip(self.label_order, row)
                 },

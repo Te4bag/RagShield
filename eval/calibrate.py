@@ -1,4 +1,4 @@
-"""E4: derive the "likely unsupported" floor on train, report it on test.
+"""E4: derive the low-support floor on train, report it on test.
 
     python -m eval.calibrate --train eval/results/e4-train-qa \\
                              --test  eval/results/e3-test-full
@@ -11,15 +11,17 @@ E3 showed the useful cutoff for *flagging* a sentence sits near
 P(entailment) 0.001, while green needs strong support. So the two are separate
 gates. This module **derives** one of them:
 
-    verification.unsupported_threshold - a sentence is likely unsupported iff
+    verification.low_support_threshold - a sentence is flagged LOW_SUPPORT iff
     P(entailment) < floor. The floor is the largest value whose sentence-level
     false-positive rate on **train** (supported sentences flagged) stays within
     a target fixed before looking, 5% by default. Test is reported, never used
     to choose.
 
-It **audits**, without changing, the two hand-set gates the UI already has:
-green (ENTAILMENT at `entailment_threshold`) and red (CONTRADICTION at
-`contradiction_threshold`), by measuring how often each is right.
+It **audits** the hand-set green gate (ENTAILMENT at `entailment_threshold`)
+by measuring how often a green sentence is supported. It also audits the red
+underline the app used to have (CONTRADICTION as the argmax class at a gate):
+that audit is the evidence P8 removed red on (PLAN.md D7), so it stays in the
+report even though no verdict uses it any more.
 
 Derived on QA only: it is the app's setting and the headline task, and E3
 measured Data2txt at chance, which would pull a pooled floor anywhere.
@@ -37,7 +39,6 @@ DEFAULT_TARGET_FPR = 0.05
 TABLE_TARGETS = (0.01, 0.02, 0.05, 0.10, 0.20)
 GREEN_GATES = (0.85, 0.90, 0.95, 0.99)
 RED_GATES = (0.85, 0.90, 0.95, 0.99)
-LABELS = ('CONTRADICTION', 'ENTAILMENT', 'NEUTRAL')
 
 
 # ------------------------------------------------------------------ loading
@@ -149,43 +150,45 @@ def answer_point(records, floor):
 
 # --------------------------------------------------------------- gate audit
 
-def verdict_at(sentence, entailment_gate, contradiction_gate):
-    """Re-derive the auditor's verdict from saved probabilities at other gates.
+def is_green(sentence, gate):
+    """Green under the auditor: P(entailment) at or above the gate."""
+    return sentence['p_entailment'] >= gate
 
-    Mirrors `NLIAuditor.audit_response`: the argmax class, demoted to NEUTRAL
-    when it is ENTAILMENT or CONTRADICTION below its gate.
+
+def was_red(sentence, gate):
+    """Red under the pre-P8 auditor: CONTRADICTION the argmax class, at the gate.
+
+    No verdict uses this any more. It reproduces the removed red underline from
+    saved probabilities so the measurement behind D7 can be re-run.
     """
-    probs = {'CONTRADICTION': sentence['p_contradiction'],
-             'ENTAILMENT': sentence['p_entailment'],
-             'NEUTRAL': sentence['p_neutral']}
-    top = max(LABELS, key=lambda label: probs[label])
-    if top == 'ENTAILMENT' and probs[top] < entailment_gate:
-        return 'NEUTRAL'
-    if top == 'CONTRADICTION' and probs[top] < contradiction_gate:
-        return 'NEUTRAL'
-    return top
+    p_con = sentence['p_contradiction']
+    return (p_con >= sentence['p_entailment'] and p_con >= sentence['p_neutral']
+            and p_con >= gate)
 
 
-def gate_audit(sentences, verdict, gates, fixed_entailment, fixed_contradiction):
-    """How often a green (or red) underline is right, at each candidate gate.
+GATE_KINDS = {
+    # name: (predicate, the gold state that makes it right)
+    'green': (is_green, False),
+    'red': (was_red, True),
+}
 
-    Green is right when the sentence is supported; red is right when it is
-    not. `share` is the fraction of the relevant gold class the gate reaches.
+
+def gate_audit(sentences, kind, gates):
+    """How often a green (or the old red) underline is right, at each gate.
+
+    Green is right when the sentence is supported; red was right when it is
+    not. `share` is the fraction of that gold class the gate reaches. Each
+    predicate depends only on its own gate, so no other threshold is involved.
     """
-    right_when_unsupported = verdict == 'CONTRADICTION'
-    relevant = [s for s in sentences if s['unsupported'] == right_when_unsupported]
+    shown, right_when_unsupported = GATE_KINDS[kind]
+    relevant = sum(s['unsupported'] == right_when_unsupported for s in sentences)
     rows = []
     for gate in gates:
-        if verdict == 'ENTAILMENT':
-            chosen = [s for s in sentences
-                      if verdict_at(s, gate, fixed_contradiction) == verdict]
-        else:
-            chosen = [s for s in sentences
-                      if verdict_at(s, fixed_entailment, gate) == verdict]
+        chosen = [s for s in sentences if shown(s, gate)]
         correct = sum(s['unsupported'] == right_when_unsupported for s in chosen)
         rows.append({'gate': gate, 'n': len(chosen),
                      'precision': correct / len(chosen) if chosen else float('nan'),
-                     'share': correct / len(relevant) if relevant else float('nan')})
+                     'share': correct / relevant if relevant else float('nan')})
     return rows
 
 
@@ -257,9 +260,8 @@ def build(train_dir, test_dir, target_fpr=DEFAULT_TARGET_FPR, task='QA'):
         raise ValueError(f"train and test runs were scored differently ({mismatch}); "
                          f"a floor derived on one does not transfer to the other")
     # Gates are applied after scoring, so they may differ between runs; the
-    # audit re-derives verdicts from probabilities at the train run's gates.
-    config = train_meta['config']['verification']
-    ent_gate, con_gate = config['entailment_threshold'], config['contradiction_threshold']
+    # audit re-derives them from saved probabilities.
+    green_gate = train_meta['config']['verification']['entailment_threshold']
 
     tr_gold, tr_p, _, tr_sent = run.sentence_level(train)
     te_gold, te_p, _, te_sent = run.sentence_level(test)
@@ -273,10 +275,10 @@ def build(train_dir, test_dir, target_fpr=DEFAULT_TARGET_FPR, task='QA'):
         'test_answer': answer_point(test, floor),
         'train_answer': answer_point(train, floor),
         'table': [],
-        'green': {'train': gate_audit(tr_sent, 'ENTAILMENT', GREEN_GATES, ent_gate, con_gate),
-                  'test': gate_audit(te_sent, 'ENTAILMENT', GREEN_GATES, ent_gate, con_gate)},
-        'red': {'train': gate_audit(tr_sent, 'CONTRADICTION', RED_GATES, ent_gate, con_gate),
-                'test': gate_audit(te_sent, 'CONTRADICTION', RED_GATES, ent_gate, con_gate)},
+        'green': {'train': gate_audit(tr_sent, 'green', GREEN_GATES),
+                  'test': gate_audit(te_sent, 'green', GREEN_GATES)},
+        'red': {'train': gate_audit(tr_sent, 'red', RED_GATES),
+                'test': gate_audit(te_sent, 'red', RED_GATES)},
         'calibration': {
             'train': metrics.calibration(tr_gold, 1.0 - tr_p),
             'test': metrics.calibration(te_gold, 1.0 - te_p),
@@ -288,7 +290,7 @@ def build(train_dir, test_dir, target_fpr=DEFAULT_TARGET_FPR, task='QA'):
             'test': {'run': Path(test_dir).name, 'labels_sha256': test_meta['labels_sha256'],
                      'git': test_meta['git'], 'n_responses': len(test)},
             'model': train_meta['config']['nli_model'],
-            'gates': {'entailment_threshold': ent_gate, 'contradiction_threshold': con_gate},
+            'entailment_threshold': green_gate,
         },
     }
     for target in TABLE_TARGETS:
@@ -306,7 +308,7 @@ def format_result(r):
     p = r['provenance']
     tr, te, ta = r['train'], r['test'], r['test_answer']
     lines = [
-        'E4 - likely-unsupported floor, derived on train, reported on test',
+        'E4 - low-support floor, derived on train, reported on test',
         '=' * 66,
         f"task {r['task']}  |  max_entailment  |  model {p['model']}",
         f"train run {p['train']['run']} ({p['train']['n_responses']} responses, labels "
@@ -315,11 +317,11 @@ def format_result(r):
         f"test  run {p['test']['run']} ({p['test']['n_responses']} responses, labels "
         f"{p['test']['labels_sha256'][:12]}..., code {p['test']['git']['commit'][:7]}"
         f"{' dirty' if p['test']['git']['dirty'] else ''})",
-        f"rule: sentence likely unsupported iff P(entailment) < floor; floor = largest value with "
+        f"rule: sentence LOW_SUPPORT iff P(entailment) < floor; floor = largest value with "
         f"train sentence FPR <= {r['target_fpr']:.0%} (target fixed before looking), "
         f"rounded down to 3 significant figures",
         '',
-        f"FLOOR  verification.unsupported_threshold = {r['floor']}  "
+        f"FLOOR  verification.low_support_threshold = {r['floor']}  "
         f"(unrounded {r['floor_unrounded']:.6g})",
         f"  train  FPR {_pct(tr['fpr'])}  TPR {_pct(tr['tpr'])}  precision {_pct(tr['precision'])}"
         f"  flagged {tr['flagged']}  (base rate {_pct(tr['base_rate'])})",
@@ -346,12 +348,14 @@ def format_result(r):
             f"{_pct(row['test']['precision']):>11}{100 * a['f1']:>8.1f}"
             f"{100 * a['precision']:>7.1f}{100 * a['recall']:>7.1f}{100 * a['flag_all_f1']:>10.1f}")
 
-    for name, verdict, gate_key, meaning in (
-            ('green', 'ENTAILMENT', 'entailment_threshold', 'supported'),
-            ('red', 'CONTRADICTION', 'contradiction_threshold', 'unsupported')):
-        lines += ['', f"Gate audit - {name} ({verdict}); precision = share of {name} "
+    for name, what, meaning, status in (
+            ('green', 'ENTAILMENT, P(entailment) >= gate', 'supported',
+             f"Current gate {p['entailment_threshold']}."),
+            ('red', 'pre-P8 CONTRADICTION, argmax at gate', 'unsupported',
+             'Removed in P8 (PLAN.md D7); kept as the evidence for that.')):
+        lines += ['', f"Gate audit - {name} ({what}); precision = share of {name} "
                       f"sentences that are actually {meaning}; reach = share of {meaning} "
-                      f"sentences shown {name}. Current gate {p['gates'][gate_key]}.",
+                      f"sentences shown {name}. {status}",
                   f"{'gate':>6}{'train n':>9}{'train prec':>12}{'train reach':>13}"
                   f"{'test n':>8}{'test prec':>11}{'test reach':>12}"]
         for a, b in zip(r[name]['train'], r[name]['test']):
@@ -386,7 +390,7 @@ def main(argv=None):
                             f"RAGTruth {split} {args.task}: reliability of 1 - P(entailment)"),
             encoding='utf-8')
     (out / 'floor.json').write_text(json.dumps({
-        'unsupported_threshold': result['floor'],
+        'low_support_threshold': result['floor'],
         'unrounded': result['floor_unrounded'],
         'target_fpr': result['target_fpr'],
         'task': result['task'],

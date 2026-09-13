@@ -23,11 +23,12 @@ STRONG_ENTAIL = (0.0, 8.0, 0.0)
 WEAK_ENTAIL = (0.0, 1.4, 0.0)        # softmaxes to ~0.66 -- below the 0.85 gate
 STRONG_CONTRA = (8.0, 0.0, 0.0)
 WEAK_CONTRA = (1.4, 0.0, 0.0)
-STRONG_NEUTRAL = (0.0, 0.0, 8.0)
+STRONG_NEUTRAL = (0.0, 0.0, 8.0)     # P(entailment) ~0.00034: under the real floor
+UNVERIFIED = (0.0, 4.0, 8.0)         # P(entailment) ~0.018: between the two gates
 
 
 def softmax(logits):
-    """Mirrors the implementation, so expected confidences are bit-identical."""
+    """Mirrors the implementation, so expected probabilities are bit-identical."""
     row = np.asarray(logits, dtype=float)
     exp = np.exp(row - row.max())
     return exp / exp.sum()
@@ -123,24 +124,35 @@ def test_selection_is_entailment_not_most_confident_non_neutral(monkeypatch):
     assert result["evidence"]["chunk_id"] == "b_ch1"
 
 
-def test_contradiction_wins_when_no_chunk_entails(monkeypatch):
-    """Max-entailment still surfaces a contradiction when that is the best read."""
+def test_a_strong_contradiction_is_flagged_low_support_not_red(monkeypatch):
+    """D7: red is gone. A sentence the best chunk contradicts is judged by its
+    entailment probability like any other -- here far below the floor."""
     s = "the decoder has twelve layers"
-    chunks = [chunk("a_ch0"), chunk("b_ch1")]
     auditor = build(monkeypatch, sentences=[s], script={
-        ("body of a_ch0", s): STRONG_NEUTRAL,
-        ("body of b_ch1", s): STRONG_CONTRA,
+        ("body of a_ch0", s): STRONG_CONTRA,
     })
 
-    (result,) = auditor.audit_response("ignored", chunks)
+    (result,) = auditor.audit_response("ignored", [chunk("a_ch0")])
 
-    assert result["verdict"] == "CONTRADICTION"
-    assert result["evidence"]["chunk_id"] == "b_ch1"
+    assert result["verdict"] == "LOW_SUPPORT"
+    assert result["probabilities"]["CONTRADICTION"] > 0.99
+
+
+def test_no_verdict_is_ever_contradiction(monkeypatch):
+    rows = [STRONG_ENTAIL, WEAK_ENTAIL, STRONG_CONTRA, WEAK_CONTRA, STRONG_NEUTRAL, UNVERIFIED]
+    sentences = [f"s{i}" for i in range(len(rows))]
+    auditor = build(monkeypatch, sentences=sentences,
+                    script={("body of a_ch0", s): r for s, r in zip(sentences, rows)})
+
+    results = auditor.audit_response("ignored", [chunk("a_ch0")])
+
+    assert {r["verdict"] for r in results} <= set(nli.VERDICTS)
+    assert "CONTRADICTION" not in nli.VERDICTS
 
 
 # --------------------------------------------------------------- thresholds
 
-def test_low_confidence_entailment_is_demoted(monkeypatch):
+def test_entailment_below_the_gate_is_neutral(monkeypatch):
     s = "weakly supported"
     auditor = build(monkeypatch, sentences=[s],
                     script={("body of a_ch0", s): WEAK_ENTAIL})
@@ -148,12 +160,12 @@ def test_low_confidence_entailment_is_demoted(monkeypatch):
     (result,) = auditor.audit_response("ignored", [chunk("a_ch0")])
 
     assert result["verdict"] == "NEUTRAL"
-    # The confidence still reports the winning class, not the demoted label.
-    assert result["confidence"] == pytest.approx(softmax(WEAK_ENTAIL)[1], abs=0.005)
+    # The number the verdict was read from, unrounded.
+    assert result["entailment"] == softmax(WEAK_ENTAIL)[1]
 
 
 def test_entailment_exactly_at_the_threshold_survives(monkeypatch):
-    """The comparison is strict `<`, so equality must not demote."""
+    """The comparison is `>=`, so equality stays green."""
     s = "exactly at the gate"
     exact = float(softmax(STRONG_ENTAIL)[1])
     auditor = build(monkeypatch, sentences=[s], entailment_threshold=exact,
@@ -164,49 +176,69 @@ def test_entailment_exactly_at_the_threshold_survives(monkeypatch):
     assert result["verdict"] == "ENTAILMENT"
 
 
-def test_low_confidence_contradiction_is_demoted(monkeypatch):
-    """A red underline claims the source refutes the sentence; a coin flip cannot."""
-    s = "weakly contradicted"
-    auditor = build(monkeypatch, sentences=[s],
-                    script={("body of a_ch0", s): WEAK_CONTRA})
+def test_below_the_floor_is_low_support(monkeypatch):
+    sentences = ["under the floor", "between the gates"]
+    auditor = build(monkeypatch, sentences=sentences, script={
+        ("body of a_ch0", "under the floor"): STRONG_NEUTRAL,
+        ("body of a_ch0", "between the gates"): UNVERIFIED,
+    })
+
+    low, middle = auditor.audit_response("ignored", [chunk("a_ch0")])
+
+    assert low["entailment"] < auditor.low_support_threshold
+    assert low["verdict"] == "LOW_SUPPORT"
+    assert middle["verdict"] == "NEUTRAL"
+
+
+def test_the_floor_is_strict(monkeypatch):
+    """`<`, so a score exactly at the floor is not flagged."""
+    s = "exactly at the floor"
+    exact = float(softmax(UNVERIFIED)[1])
+    auditor = build(monkeypatch, sentences=[s], low_support_threshold=exact,
+                    script={("body of a_ch0", s): UNVERIFIED})
 
     (result,) = auditor.audit_response("ignored", [chunk("a_ch0")])
 
     assert result["verdict"] == "NEUTRAL"
 
 
-def test_contradiction_exactly_at_the_floor_survives(monkeypatch):
-    s = "exactly at the floor"
-    exact = float(softmax(STRONG_CONTRA)[0])
-    auditor = build(monkeypatch, sentences=[s], contradiction_threshold=exact,
+def test_a_zero_floor_flags_nothing(monkeypatch):
+    """`low_support_threshold: 0.0` restores the two-colour behaviour."""
+    s = "strongly contradicted"
+    auditor = build(monkeypatch, sentences=[s], low_support_threshold=0.0,
                     script={("body of a_ch0", s): STRONG_CONTRA})
 
     (result,) = auditor.audit_response("ignored", [chunk("a_ch0")])
 
-    assert result["verdict"] == "CONTRADICTION"
-
-
-def test_zero_floor_disables_the_contradiction_demotion(monkeypatch):
-    """`contradiction_threshold: 0.0` is the documented pre-D1 ablation."""
-    s = "weakly contradicted"
-    auditor = build(monkeypatch, sentences=[s], contradiction_threshold=0.0,
-                    script={("body of a_ch0", s): WEAK_CONTRA})
-
-    (result,) = auditor.audit_response("ignored", [chunk("a_ch0")])
-
-    assert result["verdict"] == "CONTRADICTION"
-
-
-def test_neutral_is_never_promoted(monkeypatch):
-    """Both thresholds are one-way. Nothing turns a NEUTRAL into anything else."""
-    s = "unsupported but not refuted"
-    auditor = build(monkeypatch, sentences=[s], entailment_threshold=0.0,
-                    contradiction_threshold=0.0,
-                    script={("body of a_ch0", s): STRONG_NEUTRAL})
-
-    (result,) = auditor.audit_response("ignored", [chunk("a_ch0")])
-
     assert result["verdict"] == "NEUTRAL"
+
+
+def test_the_verdict_depends_only_on_entailment(monkeypatch):
+    """Contradiction-heavy and neutral-heavy rows with the same entailment
+    probability get the same verdict: nothing else is read any more."""
+    sentences = ["contradicted", "neutral"]
+    auditor = build(monkeypatch, sentences=sentences, low_support_threshold=0.01, script={
+        ("body of a_ch0", "contradicted"): STRONG_CONTRA,
+        ("body of a_ch0", "neutral"): STRONG_NEUTRAL,
+    })
+
+    first, second = auditor.audit_response("ignored", [chunk("a_ch0")])
+
+    assert first["entailment"] == pytest.approx(second["entailment"])
+    assert first["verdict"] == second["verdict"] == "LOW_SUPPORT"
+
+
+@pytest.mark.parametrize("overrides, message", [
+    ({"entailment_threshold": 0.5}, "entailment_threshold must be in"),
+    ({"entailment_threshold": 1.2}, "entailment_threshold must be in"),
+    ({"low_support_threshold": 0.85}, "gates would overlap"),
+    ({"low_support_threshold": -0.1}, "gates would overlap"),
+])
+def test_gates_that_would_mislead_are_rejected_at_construction(monkeypatch, overrides, message):
+    """Green at or below 0.5 could fire while contradiction is likelier; a floor
+    at or above the green gate would make one sentence both colours."""
+    with pytest.raises(ValueError, match=message):
+        build(monkeypatch, **overrides)
 
 
 # --------------------------------------------------------------- premises
@@ -288,6 +320,7 @@ def test_empty_context_returns_neutral_rows_without_dropping_sentences(monkeypat
     assert all(r["evidence"] is None for r in results)
     # No distribution was computed, and a fabricated one would be scored.
     assert all(r["probabilities"] is None for r in results)
+    assert all(r["entailment"] is None for r in results)
     assert auditor.stub.calls == []          # the model is never consulted
 
 
@@ -295,7 +328,7 @@ def test_empty_context_returns_neutral_rows_without_dropping_sentences(monkeypat
 
 def test_probabilities_are_the_winning_chunks_unrounded_distribution(monkeypatch):
     """Evaluation ranks on these, so they must be exact, not the 2-place
-    `confidence`, and must come from the chunk that decided the verdict."""
+    rounded value, and must come from the chunk that decided the verdict."""
     s = "a sentence"
     auditor = build(monkeypatch, sentences=[s], script={
         ("body of a_ch0", s): STRONG_NEUTRAL,
@@ -308,8 +341,7 @@ def test_probabilities_are_the_winning_chunks_unrounded_distribution(monkeypatch
     assert result["probabilities"] == {
         "CONTRADICTION": expected[0], "ENTAILMENT": expected[1], "NEUTRAL": expected[2],
     }
-    assert result["confidence"] == round(max(expected), 2)
-    assert result["probabilities"]["ENTAILMENT"] != result["confidence"]
+    assert result["entailment"] == expected[1]
 
 
 def test_probabilities_are_keyed_by_label_not_by_logit_position(monkeypatch):
@@ -370,11 +402,12 @@ def test_roberta_ordering_changes_which_logit_is_entailment(monkeypatch):
     """Same logits, different checkpoint ordering, correctly different verdict.
 
     Under the roberta ordering index 2 is entailment, so a row peaking at index
-    1 is NEUTRAL -- the exact case the hardcoded list got backwards.
+    1 is NEUTRAL -- the exact case the hardcoded list got backwards. Read as
+    deberta, the same logits would be ENTAILMENT at 0.98.
     """
     s = "a sentence"
     auditor = build(monkeypatch, sentences=[s], id2label=ROBERTA_LABELS,
-                    script={("body of a_ch0", s): (0.0, 8.0, 0.0)})
+                    script={("body of a_ch0", s): (0.0, 8.0, 4.0)})
 
     (result,) = auditor.audit_response("ignored", [chunk("a_ch0")])
 

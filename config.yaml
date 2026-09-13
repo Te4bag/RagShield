@@ -15,21 +15,26 @@ models:
   nli_model: "cross-encoder/nli-deberta-v3-small"
 
 verification:
-  # Score threshold to consider something "Supported"
+  # Green gate: P(entailment) at or above this shows a sentence as verified.
+  # Hand-set, then audited on RAGTruth QA (PLAN.md E4): 98.5% of test sentences
+  # it turns green are supported. Must stay above 0.5, so that green always
+  # means entailment is the model's most likely reading.
   entailment_threshold: 0.85
-  # Same floor for "Contradicted". A red underline claims the source refutes
-  # the sentence, so a low-confidence CONTRADICTION falls back to NEUTRAL.
-  # Both thresholds are hand-picked; deriving them from a ROC is PLAN.md E4.
-  contradiction_threshold: 0.85
-  # Floor below which a sentence is "likely unsupported" (P(entailment) under
-  # it). Derived, not hand-picked: the largest value keeping the false-positive
-  # rate on RAGTruth train QA sentences within 5% (5,034 answers, 33,793
-  # sentences; nli-deberta-v3-small, per-chunk scoring), rounded down. Measured
-  # on RAGTruth test QA: sentence FPR 4.2%, recall 16.0%; answers flagged when
-  # any sentence falls below it score F1 41.9 against 30.2 for flagging every
-  # answer. It is this low because the model rarely entails paraphrased answers
-  # at all; see PLAN.md E4. Recompute with `python -m eval.calibrate`.
-  unsupported_threshold: 0.000552
+  # Low-support floor: P(entailment) below this flags a sentence orange,
+  # "check it". Derived, not hand-picked: the largest value keeping the
+  # false-positive rate on RAGTruth train QA sentences within 5% (5,034 answers,
+  # 33,793 sentences; nli-deberta-v3-small, per-chunk scoring), rounded down.
+  # Measured on RAGTruth test QA: sentence FPR 4.2%, recall 16.0%, precision
+  # 21.4% -- most flagged sentences are still supported, which is why the flag
+  # says "low support" and not "unsupported". Answers with any flagged sentence
+  # score F1 41.9 against 30.2 for flagging every answer. It is this low because
+  # the model rarely entails paraphrased answers at all. Recompute with
+  # `python -m eval.calibrate`; re-derive if the model, chunking or segmenter
+  # changes.
+  #
+  # There is no contradiction gate: red was removed (PLAN.md D7) after E4
+  # measured it at 7.7% precision against a 6.7% base rate.
+  low_support_threshold: 0.000552
   # How a sentence is scored against the retrieved chunks.
   #   max_entailment - each chunk is its own premise; the chunk with the
   #                    highest entailment probability decides the verdict
