@@ -95,11 +95,13 @@ class NLIAuditor:
         indistinguishable from a sentence the source genuinely fails to support
         -- so the failure is invisible exactly where it matters.
 
-        Not a live problem at `top_k: 3` with per-chunk aggregation, where the
-        longest pair measured 134 tokens against 512. This guards the settings
-        that would make it one: a larger `top_k`, a larger `chunk_size`, denser
-        source text, or the `concatenate` baseline, whose premise is every
-        retrieved chunk joined together.
+        Not a live problem with per-chunk aggregation on the demo corpus, where
+        the longest pair measured 143 tokens against 512 at `top_k: 3` and only
+        150 at `top_k: 8` -- each premise is one chunk, so `top_k` barely moves
+        it. The `concatenate` baseline is different: its premise is every
+        retrieved chunk joined together, measured 351 tokens at `top_k: 3`, and
+        it crosses the budget at `top_k: 5`. This guards that, plus a larger
+        `chunk_size` or denser source text.
         """
         if self._truncation_warned or not pairs:
             return
