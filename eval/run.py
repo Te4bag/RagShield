@@ -377,6 +377,49 @@ def scope_summary(records, tau):
     return out
 
 
+def headline_cis(records, tau, green, n_resamples=1000, seed=0):
+    """95% bootstrap CIs, resampling whole responses, for the numbers E7 quotes.
+
+    Answer F1 and AUROC at the fixed rule, sentence AUROC pooled, and the
+    unsupported share of each colour the app shows (P8: green >= `green`,
+    orange < `tau`, yellow between). Responses, not sentences, are resampled:
+    sentences of one response share a context and a generation.
+    """
+    gold_a, score_a, pred_a, _ = answer_level(records, tau)
+    gold_s, p_ent, groups, _ = sentence_level(records)
+    answer_groups = np.arange(len(records))
+    out = {}
+
+    def f1(idx):
+        g, p = gold_a[idx], pred_a[idx]
+        tp = (g & p).sum()
+        denom = 2 * tp + (~g & p).sum() + (g & ~p).sum()
+        return 2 * tp / denom if denom else float('nan')
+
+    def answer_auroc(idx):
+        g = gold_a[idx]
+        return metrics.auroc(g, score_a[idx]) if 0 < g.sum() < len(g) else float('nan')
+
+    out['answer_f1'] = metrics.cluster_bootstrap_ci(f1, answer_groups, n_resamples, seed=seed)
+    out['answer_auroc'] = metrics.cluster_bootstrap_ci(answer_auroc, answer_groups, n_resamples, seed=seed)
+
+    def sentence_auroc(idx):
+        g = gold_s[idx]
+        return metrics.auroc(g, 1.0 - p_ent[idx]) if 0 < g.sum() < len(g) else float('nan')
+
+    out['sentence_auroc'] = metrics.cluster_bootstrap_ci(sentence_auroc, groups, n_resamples, seed=seed)
+
+    colours = {'green': p_ent >= green, 'yellow': (p_ent >= tau) & (p_ent < green),
+               'orange': p_ent < tau}
+    for name, mask in colours.items():
+        def share(idx, mask=mask):
+            chosen = idx[mask[idx]]
+            return gold_s[chosen].mean() if len(chosen) else float('nan')
+        out[f'{name}_unsupported'] = metrics.cluster_bootstrap_ci(share, groups, n_resamples, seed=seed)
+        out[f'{name}_n'] = int(mask.sum())
+    return out
+
+
 def _fmt(x, places=3):
     return 'n/a' if x is None or x != x else f"{x:.{places}f}"
 
@@ -435,7 +478,21 @@ def build_report(meta, records_by_aggregation, tau):
                   f"sentence AUROC pooled {_fmt(h['sentence_auroc_pooled'])}, "
                   f"within-response {_fmt(h['sentence_auroc_within'])} "
                   f"(pair-weighted, {s['sentence_detection'].within.n_groups_used if s['sentence_detection'] else 0} mixed responses)",
-                  '', 'Published example-level F1, for context (whole-context, not tuned to this rule):']
+                  '']
+        subset = [r for r in records_by_aggregation[HEADLINE_AGGREGATION]
+                  if r['task_type'] == HEADLINE_TASK]
+        green = meta['config']['verification']['entailment_threshold']
+        ci = headline_cis(subset, tau, green)
+        lines += ['95% bootstrap CIs over responses (1000 resamples, seed 0):',
+                  f"  answer F1 {ci['answer_f1'].to_text(percent=True)}   "
+                  f"answer AUROC {ci['answer_auroc'].to_text()}   "
+                  f"sentence AUROC pooled {ci['sentence_auroc'].to_text()}"]
+        if tau < green:
+            lines.append(
+                f"  unsupported share by colour (green >= {green}, orange < {tau}): "
+                + '; '.join(f"{name} {ci[name + '_unsupported'].to_text(percent=True)} (n {ci[name + '_n']})"
+                            for name in ('green', 'yellow', 'orange')))
+        lines += ['', 'Published example-level F1, for context (whole-context, not tuned to this rule):']
         lines += [f"  {name:<42}{f1:>5.1f}" for name, f1 in BASELINES]
         lines.append('')
 

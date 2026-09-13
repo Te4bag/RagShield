@@ -266,6 +266,31 @@ def test_headline_answer_f1_follows_the_rule():
     assert 'answer-level F1 80.0' in run.build_report(_meta(), {'max_entailment': RECORDS}, 0.85)
 
 
+def test_headline_cis_are_centred_on_the_point_values():
+    """F1 0.8 as above. Colours at green 0.85 / orange < 0.25, by hand:
+    green .99 .95 .97 .90 -> 0 of 4 unsupported; yellow .30(U) .60 -> 1 of 2;
+    orange .20(U) -> 1 of 1."""
+    ci = run.headline_cis(RECORDS, tau=0.25, green=0.85, n_resamples=200)
+    f1_at_085 = run.headline_cis(RECORDS, tau=0.85, green=0.85, n_resamples=50)['answer_f1']
+
+    assert f1_at_085.estimate == pytest.approx(0.8)
+    assert f1_at_085.lower <= 0.8 <= f1_at_085.upper
+    assert (ci['green_n'], ci['yellow_n'], ci['orange_n']) == (4, 2, 1)
+    assert ci['green_unsupported'].estimate == 0.0
+    assert ci['yellow_unsupported'].estimate == pytest.approx(0.5)
+    assert ci['orange_unsupported'].estimate == 1.0
+    assert ci['sentence_auroc'].n_clusters == 4          # resampled by response
+
+
+def test_report_prints_cis_and_colour_shares_only_below_the_green_gate():
+    at_floor = run.build_report(_meta(), {'max_entailment': RECORDS}, tau=0.25)
+    at_green = run.build_report(_meta(), {'max_entailment': RECORDS}, tau=0.85)
+
+    assert '95% bootstrap CIs over responses' in at_floor
+    assert 'unsupported share by colour' in at_floor
+    assert 'unsupported share by colour' not in at_green
+
+
 def test_flag_all_f1_is_the_base_rate_reference():
     """Half the answers hallucinated: flagging all gives P .5, R 1, F1 2/3."""
     assert run.flag_all_f1([True, False, True, False]) == pytest.approx(2 / 3)
