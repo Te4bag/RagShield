@@ -14,7 +14,7 @@ DEFAULTS = {
     "retrieval": {"top_k": 3},
     "models": {
         "embeddings": "all-MiniLM-L6-v2",
-        "generator": "llama-3.1-8b-instant",
+        "generator": "openai/gpt-oss-20b",
         "nli_model": "cross-encoder/nli-deberta-v3-small",
     },
     "verification": {

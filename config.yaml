@@ -9,8 +9,10 @@ retrieval:
 models:
   # Local Embedding Model
   embeddings: "all-MiniLM-L6-v2"
-  # Groq Generator Model
-  generator: "llama-3.1-8b-instant"
+  # Groq Generator Model. llama-3.1-8b-instant was retired by Groq (404
+  # model_not_found, 2026-09-13); gpt-oss-20b is the smallest current chat model
+  # and returns its reasoning in a separate field, so the answer text is clean.
+  generator: "openai/gpt-oss-20b"
   # Local NLI Model for verification
   nli_model: "cross-encoder/nli-deberta-v3-small"
 

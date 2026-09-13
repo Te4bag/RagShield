@@ -14,7 +14,8 @@ class RagGenerator:
         prompt = f"""
         Use the following pieces of retrieved context to answer the user's question.
         If you don't know the answer based on the context, just say that you don't know.
-        
+        Answer in plain prose sentences. Do not use Markdown, bullet points, tables or LaTeX.
+
         CONTEXT:
         {context}
         
