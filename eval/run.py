@@ -404,9 +404,7 @@ def build_report(meta, records_by_aggregation, tau):
               f"split {meta['split']}  |  responses {meta['n_responses']}"
               + (f" (random sample, seed {meta['seed']})" if meta.get('limit') else '')
               + f"  |  model {meta['config']['nli_model']}",
-              f"tau = {tau}  (verification.entailment_threshold"
-              + (", hand-picked; E4 derives it)" if tau == meta['config']['verification']['entailment_threshold']
-                 else f"; overridden, config has {meta['config']['verification']['entailment_threshold']})"),
+              _tau_line(meta, tau),
               f"rule: {ANSWER_RULE}",
               f"labels sha256 {meta['labels_sha256']}  |  dataset {meta['dataset']['repo']}@{meta['dataset']['revision'][:8]}",
               f"code {meta['git']['commit'][:7]}{' (dirty tree)' if meta['git']['dirty'] else ''}"
@@ -484,15 +482,38 @@ def build_report(meta, records_by_aggregation, tau):
     return '\n'.join(lines) + '\n'
 
 
+def config_tau(meta):
+    """The detector threshold a run's own config implies, and its key.
+
+    Since E4 that is `unsupported_threshold`, the derived floor below which a
+    sentence is flagged. Runs scored before E4 do not record it, and their
+    reports stay reproducible by falling back to the gate they were run with.
+    """
+    verification = meta['config']['verification']
+    if 'unsupported_threshold' in verification:
+        return verification['unsupported_threshold'], 'unsupported_threshold'
+    return verification['entailment_threshold'], 'entailment_threshold'
+
+
+def _tau_line(meta, tau):
+    value, key = config_tau(meta)
+    if tau != value:
+        return f"tau = {tau}  (overridden; this run's config has {key} {value})"
+    if key == 'unsupported_threshold':
+        return f"tau = {tau}  (verification.unsupported_threshold, derived on train in E4)"
+    return (f"tau = {tau}  (verification.entailment_threshold - a run scored before E4 "
+            f"derived unsupported_threshold)")
+
+
 def run_report(results_dir, tau=None):
     results_dir = Path(results_dir)
     meta = json.loads((results_dir / 'run.json').read_text(encoding='utf-8'))
     if tau is None:
-        tau = meta['config']['verification']['entailment_threshold']
+        tau = config_tau(meta)[0]
     records = {agg: _read_records(results_dir / f'{agg}.jsonl.gz')
                for agg in meta['aggregations']}
     text = build_report(meta, records, tau)
-    suffix = '' if tau == meta['config']['verification']['entailment_threshold'] else f'_tau{tau}'
+    suffix = '' if tau == config_tau(meta)[0] else f'_tau{tau}'
     (results_dir / f'report{suffix}.txt').write_text(text, encoding='utf-8')
     return text
 

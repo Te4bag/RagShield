@@ -318,7 +318,21 @@ def test_changing_tau_changes_the_answer_prediction_not_the_auroc():
 def test_an_overridden_tau_is_labelled_as_such():
     text = run.build_report(_meta(), {'max_entailment': RECORDS}, tau=0.6)
 
-    assert 'overridden, config has 0.85' in text
+    assert "overridden; this run's config has entailment_threshold 0.85" in text
+
+
+def test_tau_defaults_to_the_derived_floor_when_the_run_recorded_one():
+    meta = _meta(config={'nli_model': 'stub', 'verification': {
+        'entailment_threshold': 0.85, 'unsupported_threshold': 0.000552}})
+
+    assert run.config_tau(meta) == (0.000552, 'unsupported_threshold')
+    assert 'derived on train in E4' in run.build_report(meta, {'max_entailment': RECORDS},
+                                                        tau=0.000552)
+
+
+def test_a_run_scored_before_e4_falls_back_to_its_own_gate():
+    """Older run.json files have no floor; their reports must not change."""
+    assert run.config_tau(_meta()) == (0.85, 'entailment_threshold')
 
 
 def test_a_single_class_scope_reports_without_crashing():

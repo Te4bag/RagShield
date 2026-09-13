@@ -21,6 +21,15 @@ verification:
   # the sentence, so a low-confidence CONTRADICTION falls back to NEUTRAL.
   # Both thresholds are hand-picked; deriving them from a ROC is PLAN.md E4.
   contradiction_threshold: 0.85
+  # Floor below which a sentence is "likely unsupported" (P(entailment) under
+  # it). Derived, not hand-picked: the largest value keeping the false-positive
+  # rate on RAGTruth train QA sentences within 5% (5,034 answers, 33,793
+  # sentences; nli-deberta-v3-small, per-chunk scoring), rounded down. Measured
+  # on RAGTruth test QA: sentence FPR 4.2%, recall 16.0%; answers flagged when
+  # any sentence falls below it score F1 41.9 against 30.2 for flagging every
+  # answer. It is this low because the model rarely entails paraphrased answers
+  # at all; see PLAN.md E4. Recompute with `python -m eval.calibrate`.
+  unsupported_threshold: 0.000552
   # How a sentence is scored against the retrieved chunks.
   #   max_entailment - each chunk is its own premise; the chunk with the
   #                    highest entailment probability decides the verdict
@@ -32,6 +41,8 @@ verification:
   batch_size: 32
   # Input budget for the cross-encoder, in tokens. DeBERTa-v3 caps at 512.
   # A longer (premise, sentence) pair is truncated silently, so the sentence
-  # would be scored against a partial source. Measured at top_k 3 with
-  # per-chunk aggregation: 134 tokens, comfortably inside the budget.
+  # would be scored against a partial source. Measured with per-chunk
+  # aggregation: longest pair 143 tokens at top_k 3 on the demo corpus, and 0
+  # truncated pairs across all of RAGTruth test. The concatenate baseline is
+  # what reaches the limit: 351 tokens at top_k 3, over it from top_k 5.
   max_length: 512

@@ -102,6 +102,7 @@ def test_call_sites_can_subscript_directly():
     cfg["models"]["nli_model"]
     cfg["verification"]["entailment_threshold"]
     cfg["verification"]["contradiction_threshold"]
+    cfg["verification"]["unsupported_threshold"]
     cfg["verification"]["aggregation"]
     cfg["verification"]["batch_size"]
     cfg["verification"]["max_length"]
