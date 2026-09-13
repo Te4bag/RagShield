@@ -6,9 +6,9 @@ behave unpredictably, and the re-exports in `__init__` are the convention here.
 """
 import sys
 
-from . import ragtruth
+from . import indomain, ragtruth
 
-DATASETS = {'ragtruth': ragtruth.main}
+DATASETS = {'ragtruth': ragtruth.main, 'indomain': indomain.main}
 
 
 def main(argv=None):

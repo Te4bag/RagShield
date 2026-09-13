@@ -443,6 +443,76 @@ def test_without_groups_the_within_number_is_absent_not_faked():
     assert 'not computed' in m.format_report(detection=report)
 
 
+# --------------------------------------------------------------- bootstrap
+
+def test_bootstrap_of_a_constant_statistic_has_zero_width():
+    ci = m.cluster_bootstrap_ci(lambda idx: 0.25, ['a', 'b', 'c'], n_resamples=50)
+
+    assert (ci.estimate, ci.lower, ci.upper) == (0.25, 0.25, 0.25)
+    assert ci.n_valid == 50 and ci.n_clusters == 3
+
+
+def test_bootstrap_resamples_whole_groups_not_items():
+    """Group 'a' has 3 items and 'b' has 1, so any resample of 2 groups holds
+    2, 4 or 6 items - never an odd count, which item-level resampling gives."""
+    groups = ['a', 'a', 'a', 'b']
+    sizes = set()
+
+    def stat(idx):
+        sizes.add(len(idx))
+        return float(len(idx))
+
+    m.cluster_bootstrap_ci(stat, groups, n_resamples=200, seed=1)
+
+    assert sizes <= {2, 4, 6}
+    assert sizes - {4} != set()           # the full-sample call is 4; others vary
+
+
+def test_bootstrap_is_reproducible_for_a_seed():
+    values = np.array([0.1, 0.9, 0.4, 0.7, 0.2, 0.8])
+    groups = ['a', 'a', 'b', 'b', 'c', 'c']
+
+    def stat(idx):
+        return values[idx].mean()
+
+    first = m.cluster_bootstrap_ci(stat, groups, n_resamples=300, seed=7)
+    second = m.cluster_bootstrap_ci(stat, groups, n_resamples=300, seed=7)
+
+    assert first == second
+    assert first.lower <= first.estimate <= first.upper
+    assert first.estimate == pytest.approx(3.1 / 6)
+
+
+def test_undefined_resamples_are_dropped_and_counted():
+    """A rate over zero items is NaN, not 0; those draws must not pull the CI."""
+    hit = np.array([True, False])
+    groups = ['has', 'empty']
+    subset = np.array([True, False])
+
+    def stat(idx):
+        chosen = idx[subset[idx]]
+        return hit[chosen].mean() if len(chosen) else float('nan')
+
+    ci = m.cluster_bootstrap_ci(stat, groups, n_resamples=400, seed=0)
+
+    assert 0 < ci.n_valid < 400             # resamples drawing only 'empty' are undefined
+    assert (ci.lower, ci.upper) == (1.0, 1.0)
+
+
+def test_bootstrap_text_shows_estimate_and_interval():
+    ci = m.BootstrapCI(0.073, 0.0, 0.154, 0.95, 10, 10, 5)
+
+    assert ci.to_text(percent=True) == '7.3% [0.0, 15.4]'
+    assert ci.to_text() == '0.073 [0.000, 0.154]'
+    assert m.BootstrapCI(float('nan'), 0, 0, 0.95, 1, 0, 1).to_text() == 'n/a'
+
+
+@pytest.mark.parametrize('level', [0.0, 1.0, 95])
+def test_bootstrap_rejects_a_level_outside_zero_one(level):
+    with pytest.raises(ValueError, match='level'):
+        m.cluster_bootstrap_ci(lambda idx: 0.0, ['a'], level=level)
+
+
 def test_format_report_renders_both_halves():
     text = m.format_report(
         verdict=m.verdict_report(GOLD, PRED, labels=LABELS),

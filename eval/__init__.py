@@ -1,4 +1,5 @@
 from .metrics import (
+    BootstrapCI,
     Calibration,
     CalibrationBin,
     ClassMetrics,
@@ -12,6 +13,7 @@ from .metrics import (
     auroc,
     balanced_accuracy,
     calibration,
+    cluster_bootstrap_ci,
     confusion_matrix,
     detection_report,
     format_reliability,

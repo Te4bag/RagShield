@@ -1,0 +1,161 @@
+{"sentence_id": "att01-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "28.4 BLEU EN-DE stated in chunks 0 and 2"}
+{"sentence_id": "att02-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "N = 6 identical layers (chunk 0)"}
+{"sentence_id": "att02-s1", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "two sub-layers: multi-head self-attention and position-wise FFN (chunk 0)"}
+{"sentence_id": "att03-s0", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "512 appears only in the flattened Table 3 base row (chunk 0)"}
+{"sentence_id": "att04-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "large d_k gives large dot products; scaling counteracts it (chunk 1)"}
+{"sentence_id": "att04-s1", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "footnote: mean 0, variance 1 gives variance d_k (chunk 2)"}
+{"sentence_id": "att04-s2", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "small softmax gradients stated; 'making learning difficult' is a mild inference"}
+{"sentence_id": "att04-s3", "label": "UNSUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "'stabilises training and improves performance' is not stated"}
+{"sentence_id": "att05-s0", "label": "UNSUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "64 per head is stated; the number of heads (8) is not in the retrieved chunks"}
+{"sentence_id": "att06-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "positional encodings added to the input embeddings to use sequence order (chunk 1)"}
+{"sentence_id": "att06-s1", "label": "UNSUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "sinusoidal is not in the chunks, only 'learned and fixed' choices"}
+{"sentence_id": "att07-s0", "label": "UNSUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "Adam and its betas are not in the retrieved chunks"}
+{"sentence_id": "att07-s1", "label": "UNSUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "warmup_steps = 4000 stated; the linear increase and inverse square root decay are not"}
+{"sentence_id": "att08-s0", "label": "META", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "'not sure', although chunk 1 states 3.5 days on 8 P100 GPUs"}
+{"sentence_id": "att09-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "Pdrop 0.1 and label smoothing 0.1 (chunk 1)"}
+{"sentence_id": "att09-s1", "label": "META", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "about the context; 'three types of regularization' is stated in chunk 0"}
+{"sentence_id": "att10-s0", "label": "META", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "I don't know"}
+{"sentence_id": "att11-s0", "label": "UNSUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "chunk says faster only when n < d; the answer states it unconditionally"}
+{"sentence_id": "att11-s1", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "O(n) vs constant sequential operations (chunk 0); drops 'sequential' for self-attention"}
+{"sentence_id": "att11-s2", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "faster when n < d, the common case (chunk 0)"}
+{"sentence_id": "att12-s0", "label": "META", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "not sure"}
+{"sentence_id": "att13-s0", "label": "META", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "I don't know"}
+{"sentence_id": "att14-s0", "label": "META", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "I don't know"}
+{"sentence_id": "att15-s0", "label": "META", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "I don't know"}
+{"sentence_id": "att16-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "three different ways (chunk 1)"}
+{"sentence_id": "att16-s1", "label": "UNSUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "encoder self-attention is not described in the chunks (chunk 1 is cut after the first bullet)"}
+{"sentence_id": "att16-s2", "label": "UNSUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "decoder self-attention is not described in the chunks"}
+{"sentence_id": "att16-s3", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "encoder-decoder attention: queries from decoder, keys and values from encoder (chunk 1)"}
+{"sentence_id": "att17-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "masking in the decoder self-attention sub-layer (chunk 2)"}
+{"sentence_id": "att17-s1", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "paraphrase of preventing attention to subsequent positions (chunk 2)"}
+{"sentence_id": "att17-s2", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "offset by one plus masking: depends only on positions < i (chunk 2)"}
+{"sentence_id": "att18-s0", "label": "UNSUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "the desiderata are not in the retrieved chunks, and the list differs from the paper's"}
+{"sentence_id": "att19-s0", "label": "META", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "I don't know"}
+{"sentence_id": "att20-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "WMT 2014 EN-DE, about 4.5 million sentence pairs (chunk 0)"}
+{"sentence_id": "att20-s1", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "BPE, shared source-target vocabulary of about 37000 tokens (chunk 0)"}
+{"sentence_id": "att20-s2", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "batched by approximate sequence length (chunk 0)"}
+{"sentence_id": "att20-s3", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "chunk says '36M sentences'; the answer says sentence pairs"}
+{"sentence_id": "att20-s4", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "32000 word-piece vocabulary (chunk 0)"}
+{"sentence_id": "att20-s5", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "the batching sentence follows the EN-FR description; read as applying to both"}
+{"sentence_id": "att21-s0", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "learned embeddings implied by weight sharing with the learned pre-softmax transformation (chunk 2)"}
+{"sentence_id": "att21-s1", "label": "SUPPORTED", "borderline": false, "multi_chunk": true, "annotator": "claude-opus-5", "note": "multiplied by sqrt(d_model) in chunk 2; embeddings and positional encodings summed in chunk 1"}
+{"sentence_id": "att21-s2", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "dropout on the sums of embeddings and positional encodings (chunk 1)"}
+{"sentence_id": "att21-s3", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "learned linear transformation and softmax, weights shared with the embedding layers (chunk 2)"}
+{"sentence_id": "att21-s4", "label": "UNSUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "'ties the vocabularies and reduces the number of parameters' is not stated"}
+{"sentence_id": "att22-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "beam size 4, length penalty 0.6 (chunk 1)"}
+{"sentence_id": "att22-s1", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "input length + 50 and early termination 'when possible'; adds 'when a complete hypothesis was found'"}
+{"sentence_id": "att23-s0", "label": "SUPPORTED", "borderline": true, "multi_chunk": true, "annotator": "claude-opus-5", "note": "nearly identical results (chunk 0) and the reasons (chunks 0, 1); 'two practical advantages' is framing"}
+{"sentence_id": "att23-s1", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "chunk hedges 'may allow the model to extrapolate'; the answer states it outright and adds 'defined for any position'"}
+{"sentence_id": "att23-s2", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "chunk 1 says 'hypothesized it would allow'; the answer drops the hedge"}
+{"sentence_id": "att23-s3", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "evaluative summary with no new fact"}
+{"sentence_id": "att24-s0", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "'connects all positions with a constant number of sequentially executed operations' (chunk 2); 'one' is more specific"}
+{"sentence_id": "att24-s1", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "recurrent O(n) sequential operations (chunk 2) read as path length"}
+{"sentence_id": "att24-s2", "label": "UNSUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "O(n/k) path length for convolutions is not in the chunks"}
+{"sentence_id": "att24-s3", "label": "UNSUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "the self-attention half is supported; the convolutional comparison is not"}
+{"sentence_id": "att25-s0", "label": "UNSUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "chunk says other parameters were unchanged but dropout, learning rates and beam size were tuned; 'exactly as' is not stated"}
+{"sentence_id": "att25-s1", "label": "UNSUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "same layers, heads, hidden size and FFN size are not stated (the paper used 4 layers, d_model 1024)"}
+{"sentence_id": "att25-s2", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "dropout, learning rates and beam size selected on the Section 22 development set (chunk 2)"}
+{"sentence_id": "att25-s3", "label": "UNSUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "only 'all other parameters remained unchanged'; the listed examples are not stated"}
+{"sentence_id": "att25-s4", "label": "UNSUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "WSJ training data and 'same procedure and preprocessing' are not in the chunks"}
+{"sentence_id": "att26-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "about 0.4 seconds per step (chunk 0)"}
+{"sentence_id": "att26-s1", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "100,000 steps or 12 hours (chunk 0)"}
+{"sentence_id": "att27-s0", "label": "UNSUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "heads are implied (chunk 1) but 'split into several parallel heads' is not described"}
+{"sentence_id": "att27-s1", "label": "UNSUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "per-head projection of queries, keys and values is not in the chunks"}
+{"sentence_id": "att27-s2", "label": "UNSUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "'= d_model/h = 64' is stated; 'performs its own attention calculation' is not"}
+{"sentence_id": "att27-s3", "label": "UNSUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "concatenation and final linear projection are not in the chunks"}
+{"sentence_id": "att27-s4", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "cost similar to single-head attention with full dimensionality (chunk 1)"}
+{"sentence_id": "att27-s5", "label": "UNSUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "chunk 2 says heads learned different tasks; 'harder to capture with a single attention function' is not stated"}
+{"sentence_id": "att27-s6", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "counteracting reduced resolution from averaging (chunk 0); 'richer, more expressive' is framing"}
+{"sentence_id": "att28-s0", "label": "META", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "I don't know"}
+{"sentence_id": "att29-s0", "label": "META", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "I don't know"}
+{"sentence_id": "att30-s0", "label": "META", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "I don't know"}
+{"sentence_id": "icd01-s0", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "joint effort for complete, accurate documentation, code assignment and reporting (chunk 1), recast as the guidelines' purpose"}
+{"sentence_id": "icd01-s1", "label": "UNSUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "'federal and professional standards' and 'detailed instructions and best practices' are not stated; POA support is attributed to documentation, not the guidelines"}
+{"sentence_id": "icd02-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "implied by chunks 1 and 2"}
+{"sentence_id": "icd02-s1", "label": "UNSUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "'only when' contradicts chunk 2b, which allows symptom codes alongside a definitive diagnosis"}
+{"sentence_id": "icd02-s2", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "chunk 2b"}
+{"sentence_id": "icd02-s3", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "follows from chunk 2b"}
+{"sentence_id": "icd03-s0", "label": "META", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "I don't know; chunk 0 is cut at '6. Abbreviations a'"}
+{"sentence_id": "icd04-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "never used at the same time as the code above the note (chunk 0)"}
+{"sentence_id": "icd04-s1", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "pure excludes note, 'NOT CODED HERE!' (chunk 0)"}
+{"sentence_id": "icd04-s2", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "used when two conditions cannot occur together (chunk 0)"}
+{"sentence_id": "icd05-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "U07.1 for a confirmed diagnosis (chunk 2)"}
+{"sentence_id": "icd05-s1", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "provider documentation suffices, no positive test needed (chunk 2)"}
+{"sentence_id": "icd05-s2", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "chunk 0 fragment: U07.1 principal with manifestations as additional diagnoses; its condition is cut off"}
+{"sentence_id": "icd06-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "two uses, chunks 0 and 1"}
+{"sentence_id": "icd06-s1", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "future expansion, T36-T50, X required for validity (chunk 0)"}
+{"sentence_id": "icd06-s2", "label": "UNSUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "conflict: chunk 1 says X fills the empty characters when the code is not 6 characters; the answer says X fills the 7th position"}
+{"sentence_id": "icd07-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "minimum of 2 codes (chunk 0)"}
+{"sentence_id": "icd07-s1", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "underlying systemic infection first (chunk 0)"}
+{"sentence_id": "icd07-s2", "label": "SUPPORTED", "borderline": false, "multi_chunk": true, "annotator": "claude-opus-5", "note": "code split across chunks: 'A41' ends chunk 0, '.9, Sepsis, unspecified organism' starts chunk 1"}
+{"sentence_id": "icd07-s3", "label": "SUPPORTED", "borderline": true, "multi_chunk": true, "annotator": "claude-opus-5", "note": "R65.2 subcategory (chunk 0) and R65.21 with septic shock (chunk 1); calls R65.2 itself a code"}
+{"sentence_id": "icd07-s4", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "infection first, followed by R65.2 (chunk 0)"}
+{"sentence_id": "icd07-s5", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "noninfectious condition first, then the infection, plus R65.2 (chunk 2)"}
+{"sentence_id": "icd07-s6", "label": "UNSUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "chunk 2 says R65.1 is unnecessary for sepsis with a noninfectious condition; the answer generalises to all severe sepsis"}
+{"sentence_id": "icd08-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "UHDDS definition (chunks 0, 1)"}
+{"sentence_id": "icd09-s0", "label": "UNSUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "conflict: chunk 1 (outpatient section) says do not code uncertain diagnoses; the answer applies the inpatient rule from chunks 0 and 2"}
+{"sentence_id": "icd09-s1", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "paraphrase of the bases for the guideline (chunk 0), which belongs to the inpatient rule"}
+{"sentence_id": "icd09-s2", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "list additional codes for coexisting conditions (chunk 1)"}
+{"sentence_id": "icd10-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "category I11 (chunk 2)"}
+{"sentence_id": "icd10-s1", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "additional I50 code for the type of heart failure (chunk 2)"}
+{"sentence_id": "icd10-s2", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "coded separately if documented as unrelated (chunk 0)"}
+{"sentence_id": "icd11-s0", "label": "META", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "I don't know"}
+{"sentence_id": "icd12-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "default E11.- type 2 (chunk 0)"}
+{"sentence_id": "icd12-s1", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "insulin use without a documented type is coded E11 (chunk 0)"}
+{"sentence_id": "icd12-s2", "label": "SUPPORTED", "borderline": true, "multi_chunk": true, "annotator": "claude-opus-5", "note": "as many codes as needed (chunk 1) and combination codes by body system (chunk 2); 'E11.x' applies it to the type 2 default"}
+{"sentence_id": "icd13-s0", "label": "META", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "I don't know"}
+{"sentence_id": "icd14-s0", "label": "META", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "I don't know"}
+{"sentence_id": "icd15-s0", "label": "META", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "I don't know"}
+{"sentence_id": "icd16-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": true, "annotator": "claude-opus-5", "note": "'use additional code' at the etiology code (chunks 0, 2); two codes to fully describe the condition (chunk 1)"}
+{"sentence_id": "icd16-s1", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "'code first' at the manifestation, sequenced after the etiology (chunk 0)"}
+{"sentence_id": "icd16-s2", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "etiology followed by manifestation (chunk 0)"}
+{"sentence_id": "icd16-s3", "label": "SUPPORTED", "borderline": true, "multi_chunk": true, "annotator": "claude-opus-5", "note": "'wherever such a combination exists' (chunk 0) and the same sequencing rule for other multi-code conditions (chunk 1)"}
+{"sentence_id": "icd17-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "chunk 0"}
+{"sentence_id": "icd17-s1", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "acceptable to use both codes together when appropriate (chunk 2)"}
+{"sentence_id": "icd17-s2", "label": "SUPPORTED", "borderline": false, "multi_chunk": true, "annotator": "claude-opus-5", "note": "Excludes1 from chunk 0, Excludes2 from chunk 2"}
+{"sentence_id": "icd18-s0", "label": "UNSUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "chunk 1 gives POA rules for acute and for chronic conditions; 'treat each component separately' is not stated"}
+{"sentence_id": "icd18-s1", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "Y for chronic conditions even if diagnosed after admission (chunk 1); the 'because' clause is reworded"}
+{"sentence_id": "icd18-s2", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "Y if present at admission, N if not (chunk 1)"}
+{"sentence_id": "icd18-s3", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "single code with chronic condition and acute exacerbation: see multiple-concept POA rules (chunk 2)"}
+{"sentence_id": "icd18-s4", "label": "SUPPORTED", "borderline": true, "multi_chunk": true, "annotator": "claude-opus-5", "note": "summary of chunks 1 and 2"}
+{"sentence_id": "icd19-s0", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "chunk 0 says 'generally requires two codes'"}
+{"sentence_id": "icd19-s1", "label": "UNSUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "conflict: chunk 0 puts the condition or nature of the sequela (the residual) first; the answer puts the underlying disease that produced it first"}
+{"sentence_id": "icd19-s2", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "'sequenced second' (chunk 0); 'always' ignores the exception in chunk 2"}
+{"sentence_id": "icd19-s3", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "text of chunk 1, which concerns combination codes in general, applied to sequelae"}
+{"sentence_id": "icd19-s4", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "as icd19-s3"}
+{"sentence_id": "icd19-s5", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "the exception (chunk 2)"}
+{"sentence_id": "icd19-s6", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "acute-phase code never used with the late-effect code (chunk 2)"}
+{"sentence_id": "icd20-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "L89 identifies site and stage (chunk 0)"}
+{"sentence_id": "icd20-s1", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "stages 1-4, deep tissue injury, unspecified, unstageable (chunk 0)"}
+{"sentence_id": "icd20-s2", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "L89.--0 when the stage cannot be determined, eschar or graft (chunk 1)"}
+{"sentence_id": "icd20-s3", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "L89.--9 when no stage is documented (chunk 2)"}
+{"sentence_id": "icd20-s4", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "'assign only the code for the stage revealed' read as replacing the unstageable code"}
+{"sentence_id": "icd20-s5", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "guided by clinical documentation or Alphabetic Index terms (chunk 2)"}
+{"sentence_id": "icd20-s6", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "as many L89 codes as needed (chunk 0)"}
+{"sentence_id": "icd21-s0", "label": "SUPPORTED", "borderline": true, "multi_chunk": true, "annotator": "claude-opus-5", "note": "D subsequent encounter (chunk 1); routine healing-phase care is stated for fractures (chunk 0)"}
+{"sentence_id": "icd21-s1", "label": "UNSUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "conflict: chunk 0 assigns malunions and nonunions to the other 7th characters and surgical complications to complication codes, not D"}
+{"sentence_id": "icd21-s2", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "S sequela, scar after a burn (chunk 1)"}
+{"sentence_id": "icd21-s3", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "S added only to the injury code, both codes reported (chunk 1)"}
+{"sentence_id": "icd22-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": true, "annotator": "claude-opus-5", "note": "I12 (chunk 0) with N18 as a secondary code (chunk 1)"}
+{"sentence_id": "icd22-s1", "label": "SUPPORTED", "borderline": true, "multi_chunk": true, "annotator": "claude-opus-5", "note": "N18 identifies the stage (chunk 1); I12 as hypertensive CKD (chunk 0)"}
+{"sentence_id": "icd22-s2", "label": "UNSUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "chunk 0 says not to code CKD as hypertensive; 'only the N18 code' is added"}
+{"sentence_id": "icd22-s3", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "acute renal failure also coded (chunk 1)"}
+{"sentence_id": "icd22-s4", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "sequence according to the circumstances (chunk 1)"}
+{"sentence_id": "icd23-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "state mandate or payer requirement (chunk 0)"}
+{"sentence_id": "icd23-s1", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "voluntary reporting encouraged, injury research (chunk 0)"}
+{"sentence_id": "icd23-s2", "label": "SUPPORTED", "borderline": true, "multi_chunk": true, "annotator": "claude-opus-5", "note": "range heading (chunk 0, cut off) and the reporting-format limit (chunk 1)"}
+{"sentence_id": "icd23-s3", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "summary; 'public-health data' for 'injury research and prevention'"}
+{"sentence_id": "icd24-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "any one may be sequenced first (chunk 0)"}
+{"sentence_id": "icd24-s1", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "garbled restatement of the 'unless' clause (chunk 1)"}
+{"sentence_id": "icd24-s2", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "chunk 0"}
+{"sentence_id": "icd25-s0", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "reason for an encounter (chunk 0); 'influence health status' is the Z00-Z99 title, not in these chunks"}
+{"sentence_id": "icd25-s1", "label": "SUPPORTED", "borderline": true, "multi_chunk": true, "annotator": "claude-opus-5", "note": "'not procedure codes' (chunk 0), housing and poverty codes (chunk 1), pregnancy (chunk 2); 'not disease codes' is added"}
+{"sentence_id": "icd25-s2", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "first-listed or secondary, any setting (chunk 0)"}
+{"sentence_id": "icd26-s0", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "B20 principal (chunk 0)"}
+{"sentence_id": "icd26-s1", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "additional codes for reported HIV-related conditions (chunk 0)"}
+{"sentence_id": "icd27-s0", "label": "SUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "Z51.1 is a subcategory in chunk 2, called a code here"}
+{"sentence_id": "icd27-s1", "label": "SUPPORTED", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "followed by the diagnosis code (chunk 2)"}
+{"sentence_id": "icd27-s2", "label": "UNSUPPORTED", "borderline": true, "multi_chunk": false, "annotator": "claude-opus-5", "note": "chunk 2 presents this sequencing as an exception to 'this rule', not as the rule"}
+{"sentence_id": "icd28-s0", "label": "META", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "I don't know"}
+{"sentence_id": "icd29-s0", "label": "META", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "I don't know"}
+{"sentence_id": "icd30-s0", "label": "META", "borderline": false, "multi_chunk": false, "annotator": "claude-opus-5", "note": "not sure"}

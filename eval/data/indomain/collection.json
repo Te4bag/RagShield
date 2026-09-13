@@ -1,0 +1,30 @@
+{
+  "created": "2026-09-13T16:33:19",
+  "git": {
+    "commit": "b012cf49075253c64125e31a79d6ef7dad546560",
+    "dirty": true
+  },
+  "generator": {
+    "model": "openai/gpt-oss-20b",
+    "temperature": 0.1,
+    "prompt": "rag/generator.py RagGenerator.generate_answer"
+  },
+  "embeddings": "all-MiniLM-L6-v2",
+  "retrieval": {
+    "top_k": 3
+  },
+  "ingestion": {
+    "chunk_size": 600,
+    "chunk_overlap": 60
+  },
+  "documents": {
+    "attention paper.pdf": "bdfaa68d8984f0dc02beaca527b76f207d99b666d31d1da728ee0728182df697",
+    "ICD coding manual.pdf": "6e8d7e2cae4a5db403ca3f819fb3b45df94d448e66449d2c608c2dcf7409f039"
+  },
+  "segmenter": {
+    "spacy": "3.8.15",
+    "model": "core_web_sm-3.8.0",
+    "min_sentence_chars": 5,
+    "source_sha256": "f2a10dbb619fc3ce82edce436a5614ada7875a1872387f87d5c6a2bd6ac1c355"
+  }
+}

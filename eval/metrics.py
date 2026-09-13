@@ -508,6 +508,64 @@ def detection_report(y_true, scores, groups=None, positive_label='positive',
     )
 
 
+# ------------------------------------------------------------- uncertainty
+
+@dataclass(frozen=True)
+class BootstrapCI:
+    estimate: float       # the statistic on the full sample
+    lower: float
+    upper: float
+    level: float
+    n_resamples: int
+    n_valid: int          # resamples on which the statistic was defined
+    n_clusters: int
+
+    def to_text(self, places=3, percent=False):
+        if self.estimate != self.estimate:
+            return 'n/a'
+        scale, suffix = (100.0, '%') if percent else (1.0, '')
+        p = max(places - 2, 1) if percent else places
+        return (f"{scale * self.estimate:.{p}f}{suffix} "
+                f"[{scale * self.lower:.{p}f}, {scale * self.upper:.{p}f}]")
+
+
+def cluster_bootstrap_ci(statistic, groups, n_resamples=2000, level=0.95, seed=0):
+    """Percentile CI for `statistic`, resampling whole groups with replacement.
+
+    `statistic(indices)` receives an integer index array into the caller's item
+    arrays and returns a float, or NaN where it is undefined (a rate over zero
+    items, an AUROC with one class). NaN resamples are dropped and counted in
+    `n_valid`, so a CI resting on few defined resamples says so.
+
+    Groups rather than items, because sentences from one answer share a
+    question, a retrieval and a generation: resampling sentences independently
+    would pretend a 7-sentence answer is 7 independent observations and make
+    the interval too narrow.
+    """
+    if not 0 < level < 1:
+        raise ValueError(f"level must be in (0, 1), got {level}")
+    groups = np.asarray(groups)
+    if groups.ndim != 1 or len(groups) == 0:
+        raise ValueError("groups must be a non-empty 1-D array")
+    names, inverse = np.unique(groups, return_inverse=True)
+    members = [np.flatnonzero(inverse == k) for k in range(len(names))]
+
+    estimate = float(statistic(np.arange(len(groups))))
+    rng = np.random.default_rng(seed)
+    values = []
+    for _ in range(n_resamples):
+        picked = rng.integers(0, len(members), size=len(members))
+        value = float(statistic(np.concatenate([members[k] for k in picked])))
+        if value == value:
+            values.append(value)
+    if not values:
+        lower = upper = float('nan')
+    else:
+        alpha = (1.0 - level) / 2.0
+        lower, upper = (float(v) for v in np.quantile(values, [alpha, 1.0 - alpha]))
+    return BootstrapCI(estimate, lower, upper, level, n_resamples, len(values), len(members))
+
+
 # --------------------------------------------------------------- rendering
 
 # Wide enough for the longest detection label, so the numbers form a column.
