@@ -208,7 +208,6 @@ python -m eval.latency run --device auto --name gpu
 python -m eval.latency run --device cpu --name cpu
 ```
 
-Results land in `eval/results/` (not committed). Every report prints the label-file SHA-256, the git commit and the device, so a rerun can be checked against these numbers. RAGTruth scoring is byte-reproducible on the same machine; live Groq latency is not.
 
 **Dataset.** RAGTruth: Niu et al., *RAGTruth: A Hallucination Corpus for Developing Trustworthy Retrieval-Augmented Language Models*, ACL 2024. Used via the Hugging Face copy [`wandb/RAGTruth-processed`](https://huggingface.co/datasets/wandb/RAGTruth-processed) at revision `eb4f4b9d1b68eb7092d3e1a61c0cd82d9808737b`. The derived sentence labels are generated locally and not redistributed here.
 
@@ -237,8 +236,3 @@ rag-shield/
 └── tests/                 # offline test suite
 ```
 
----
-
-## A note on earlier versions of this README
-
-Earlier versions reported a detection rate of 94.2%, a 3.1% false-positive rate, 1.2 s per query and 97.8% attribution accuracy on "500 medical coding queries". **No benchmark behind those figures existed, and they have been withdrawn.** The worked examples in those versions were also produced while the checker read the model's labels in the wrong order, so their green verdicts were not real entailments. Everything above replaces them with measured results.
