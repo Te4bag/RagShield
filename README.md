@@ -14,6 +14,10 @@ The point of the project is the verification layer, and every number in this REA
 
 ![RagShield query interface](images/demo_query.png)
 
+![An answer checked sentence by sentence](images/demo_response.png)
+
+*The question mixes a coding rule from the ICD-10-CM guidelines with septic-shock treatment, which the guidelines never cover. One coding sentence is verified and the rest are not verified. None of the treatment advice is verified, and its last sentence is flagged orange. Hovering a sentence shows its score and the passage behind it.*
+
 ---
 
 ## How it works
