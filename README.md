@@ -16,7 +16,7 @@ The point of the project is the verification layer, and every number in this REA
 
 ![An answer checked sentence by sentence](images/demo_response.png)
 
-*The question mixes a coding rule from the ICD-10-CM guidelines with septic-shock treatment, which the guidelines never cover. One coding sentence is verified and the rest are not verified. None of the treatment advice is verified, and its last sentence is flagged orange. Hovering a sentence shows its score and the passage behind it.*
+*The question mixes a coding rule from the ICD-10-CM guidelines with septic-shock treatment, which the guidelines never cover. One coding sentence is verified and the rest are not verified. None of the treatment advice is verified, and its last sentence is flagged orange. Hovering a sentence shows its score and which passage decided it; "Detailed Analysis" below the answer shows that passage's text.*
 
 ---
 
@@ -75,7 +75,7 @@ Other RAGTruth tasks, reported for completeness: Summary sentence AUROC 0.697; D
 
 60 questions over the two bundled documents (the *Attention Is All You Need* paper and the ICD-10-CM coding guidelines), run through the full pipeline: retrieval, Groq, then the checker. 161 answer sentences were labelled against the chunks retrieved for them.
 
-> **These labels were written by Claude (an AI assistant), not by a human annotator.** They were written blind to the checker's scores and frozen before scoring (the label files' SHA-256 is recorded). They are committed in [`eval/data/indomain/`](eval/data/indomain/), with a rationale per sentence, so you can audit them. 48 of the 161 are marked borderline.
+> **Labels were written by Claude (an AI assistant), not a human.** They were written before scoring, without seeing the checker's output, and are committed with a rationale per sentence in [`eval/data/indomain/`](eval/data/indomain/). 48 of 161 are marked borderline.
 
 | | Demo PDFs | RAGTruth QA |
 |---|---:|---:|
